@@ -24,13 +24,10 @@ folder topology/
 folder monitoring/
 folder testing/
 
-Lalu isi README.md minimal memuat:
-deskripsi proyek
-arsitektur
-topologi
-requirement
-deployment
-backend API
-testing
-hasil
-anggota tim
+# Arsitektur topologi
+
+# Requirenment
+
+# Deployment
+
+# Hasil
