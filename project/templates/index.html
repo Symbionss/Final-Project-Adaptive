@@ -253,9 +253,10 @@
           <h3 style="margin-top:25px; margin-bottom:10px; font-size:1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom:8px; display:flex; align-items:center; gap:8px;">
              Link Status Control
           </h3>
-          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <input type="text" id="dpid" placeholder="Switch DPID (e.g. 1)" style="width: 50%;" />
-            <input type="text" id="port_no" placeholder="Port No (e.g. 4)" style="width: 50%;" />
+          <div class="form-group" style="margin-bottom: 15px;">
+            <select id="link-selector" style="width: 100%; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); color: var(--text-primary); padding: 12px 16px; border-radius: 8px; font-family: inherit; font-size: 0.95rem; outline: none;">
+               <option value="">-- Menunggu Data Topologi --</option>
+            </select>
           </div>
           <div class="button-group">
             <button class="block-btn" onclick="controlPort('down')" style="background: #be123c;">Cut Link</button>
@@ -319,12 +320,16 @@
       function unblockIP() { triggerAPI("unblock_ip", document.getElementById("ip").value); }
 
       async function controlPort(action) {
-        let dpid = document.getElementById("dpid").value;
-        let port_no = document.getElementById("port_no").value;
-        if (!dpid || !port_no) {
-          document.getElementById("result").innerText = "Please enter Switch DPID and Port No.";
+        let selector = document.getElementById("link-selector");
+        let val = selector.value;
+        if (!val) {
+          document.getElementById("result").innerText = "Silakan klik menu dan pilih sebuah Kabel (Link).";
           return;
         }
+        
+        let parts = val.split(":");
+        let dpid = parts[0];
+        let port_no = parts[1];
 
         document.getElementById("result").innerText = `Processing Port ${action.toUpperCase()}...`;
         try {
@@ -413,6 +418,7 @@
           }
 
           // Links
+          let optionsMap = {};
           if (data.links) {
             data.links.forEach(link => {
               const src = link.src.dpid;
@@ -424,16 +430,15 @@
               const normalizedEdgeId = isSrcSmaller ? `${src}:${srcPort}-${dst}:${dstPort}` : `${dst}:${dstPort}-${src}:${srcPort}`;
               activeEdges.add(normalizedEdgeId);
               
-              let linkColor = '#94a3b8';
-              let linkLabel = '';
-              
               const isBackup = (srcPort === "00000005" || dstPort === "00000005" || srcPort === "00000003" || dstPort === "00000003" || (src === "0000000000000002" && srcPort === "00000004") || (dst === "0000000000000002" && dstPort === "00000004"));
+              let linkColor = isBackup ? '#f59e0b' : '#10b981';
+              let linkLabel = isBackup ? 'Backup' : 'Main';
               
-              if (isBackup) {
-                   linkColor = '#f59e0b'; linkLabel = 'Backup';
-              } else {
-                   linkColor = '#10b981'; linkLabel = 'Main';
-              }
+              // Menyusun data untuk Dropdown Selector Pintar
+              let s1_id = parseInt(src, 16);
+              let s2_id = parseInt(dst, 16);
+              let portInt = parseInt(srcPort, 16);
+              optionsMap[`${s1_id}:${portInt}`] = `[Switch ${s1_id}] Port ${portInt} 👉 ke S${s2_id} (${linkLabel})`;
 
               const existing = edgesDataset.get(normalizedEdgeId);
               if (!existing || existing.label === 'DEAD' || existing._animating === undefined) {
@@ -454,6 +459,19 @@
                   });
               }
             });
+          }
+          
+          let linkSelector = document.getElementById("link-selector");
+          if (linkSelector) {
+              let currentSelection = linkSelector.value;
+              let newOptionsHTML = '<option value="">-- Pilih Kabel Switch (Main/Backup) --</option>';
+              for (const [val, text] of Object.entries(optionsMap)) {
+                  newOptionsHTML += `<option value="${val}">🔌 ${text}</option>`;
+              }
+              if (linkSelector.innerHTML !== newOptionsHTML) {
+                   linkSelector.innerHTML = newOptionsHTML;
+                   if (optionsMap[currentSelection]) linkSelector.value = currentSelection;
+              }
           }
 
           // Deteksi Kabel Mati
