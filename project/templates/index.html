@@ -249,6 +249,18 @@
             <button class="unblock-btn" onclick="unblockIP()">Unblock IP</button>
           </div>
           <div id="result">Response output will appear here...</div>
+          
+          <h3 style="margin-top:25px; margin-bottom:10px; font-size:1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom:8px; display:flex; align-items:center; gap:8px;">
+             Link Status Control
+          </h3>
+          <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <input type="text" id="dpid" placeholder="Switch DPID (e.g. 1)" style="width: 50%;" />
+            <input type="text" id="port_no" placeholder="Port No (e.g. 4)" style="width: 50%;" />
+          </div>
+          <div class="button-group">
+            <button class="block-btn" onclick="controlPort('down')" style="background: #be123c;">Cut Link</button>
+            <button class="unblock-btn" onclick="controlPort('up')" style="background: #047857;">Restore Link</button>
+          </div>
         </div>
       </aside>
 
@@ -305,6 +317,28 @@
 
       function blockIP() { triggerAPI("block_ip", document.getElementById("ip").value); }
       function unblockIP() { triggerAPI("unblock_ip", document.getElementById("ip").value); }
+
+      async function controlPort(action) {
+        let dpid = document.getElementById("dpid").value;
+        let port_no = document.getElementById("port_no").value;
+        if (!dpid || !port_no) {
+          document.getElementById("result").innerText = "Please enter Switch DPID and Port No.";
+          return;
+        }
+
+        document.getElementById("result").innerText = `Processing Port ${action.toUpperCase()}...`;
+        try {
+          const res = await fetch(`/api/port_control`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dpid: dpid, port_no: port_no, action: action }),
+          });
+          const data = await res.json();
+          document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+        } catch (e) {
+          document.getElementById("result").innerText = `Error: ${e.message}`;
+        }
+      }
 
       // Vis-Network Topology Logic
       let network = null;
