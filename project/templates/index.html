@@ -359,15 +359,21 @@
               if (host.port && host.port.dpid) {
                 const edgeId = `host-${host.mac}-${host.port.dpid}`;
                 activeEdges.add(edgeId);
-                edgesDataset.update({
-                  id: edgeId,
-                  from: host.mac,
-                  to: host.port.dpid,
-                  color: { color: 'rgba(255,255,255,0.4)' },
-                  width: 2,
-                  dashes: true,
-                  isSwitchLink: false
-                });
+                const existingEdge = edgesDataset.get(edgeId);
+                if (!existingEdge || existingEdge._animating === undefined) {
+                    edgesDataset.update({
+                      id: edgeId,
+                      from: host.mac,
+                      to: host.port.dpid,
+                      color: { color: 'rgba(255,255,255,0.4)' },
+                      width: 2,
+                      dashes: true,
+                      isSwitchLink: false,
+                      srcDpid: host.port.dpid,
+                      srcPort: host.port.port_no,
+                      _animating: false
+                    });
+                }
               }
             });
           }
@@ -502,6 +508,42 @@
                                    width: 3,
                                    font: {color: '#f8fafc', size: 14, align: 'top', strokeWidth: 3, strokeColor: '#000000'},
                                    label: edge.baseLabel,
+                                   _animating: false
+                               });
+                           }
+                       }
+                    }
+
+                    // --- TAMBAHAN BARU: Animasi Khusus untuk Kabel Host ---
+                    if (!edge.isSwitchLink && edge.srcDpid && edge.srcPort) {
+                       let tx = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].tx : 0;
+                       let rx = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].rx : 0;
+                       
+                       let prevTx = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].tx : tx;
+                       let prevRx = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].rx : rx;
+                       
+                       let deltaTx = tx - prevTx;
+                       let deltaRx = rx - prevRx;
+                       
+                       // Ping dari/ke host.
+                       if (deltaTx > 200 || deltaRx > 200) {  
+                           edgesDataset.update({
+                               id: edge.id, 
+                               color: { color: '#a855f7' }, // Purple/Pink menyala tebal menunjukkan traffic Personal Host
+                               width: 6,
+                               dashes: false, // Ubah jadi solid sementara agar terlihat aliran
+                               font: {color: '#ffffff', size: 14, align: 'top', strokeWidth: 3, strokeColor: '#000000'},
+                               label: 'Sending Data',
+                               _animating: true
+                           });
+                       } else {
+                           if (edge._animating) {
+                               edgesDataset.update({
+                                   id: edge.id,
+                                   color: { color: 'rgba(255,255,255,0.4)' },
+                                   width: 2,
+                                   dashes: true, // Kembali transparan dan putus-putus
+                                   label: undefined, // Hapus label
                                    _animating: false
                                });
                            }
