@@ -185,6 +185,37 @@
         height: 100%;
         border: none;
       }
+
+      .legend-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 15px;
+        font-size: 0.85rem;
+        background: rgba(0,0,0,0.3);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+      }
+      .legend-line {
+        width: 24px;
+        height: 3px;
+      }
+      .legend-dashed {
+        width: 24px;
+        height: 2px;
+        border-bottom: 2px dashed rgba(255,255,255,0.6);
+      }
       
       .status-indicator {
         font-size: 0.8rem;
@@ -225,6 +256,14 @@
       <main class="main-content">
         <div class="card">
           <h2>Network Topology</h2>
+          <div class="legend-container">
+            <div class="legend-item"><div class="legend-color" style="background: #2563eb; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"></div><span>Switch</span></div>
+            <div class="legend-item"><div class="legend-color" style="background: #059669; border-radius: 50%;"></div><span>Host</span></div>
+            <div class="legend-item"><div class="legend-line" style="background: #10b981;"></div><span>Main Link (Cepat)</span></div>
+            <div class="legend-item"><div class="legend-line" style="background: #f59e0b;"></div><span>Backup Link (Lambat)</span></div>
+            <div class="legend-item"><div class="legend-line" style="background: #94a3b8;"></div><span>Unknown Link</span></div>
+            <div class="legend-item"><div class="legend-dashed"></div><span>Kabel Host</span></div>
+          </div>
           <div id="topology-network"></div>
           <div class="status-indicator">
             <div class="status-dot tooltip" id="topo-status-dot"></div>
@@ -264,146 +303,156 @@
         }
       }
 
-      function blockIP() {
-        triggerAPI("block_ip", document.getElementById("ip").value);
-      }
-
-      function unblockIP() {
-        triggerAPI("unblock_ip", document.getElementById("ip").value);
-      }
+      function blockIP() { triggerAPI("block_ip", document.getElementById("ip").value); }
+      function unblockIP() { triggerAPI("unblock_ip", document.getElementById("ip").value); }
 
       // Vis-Network Topology Logic
       let network = null;
+      let nodesDataset = new vis.DataSet();
+      let edgesDataset = new vis.DataSet();
+      let previousStats = {};
       
       async function drawTopology() {
         try {
           const res = await fetch('/api/topology');
           const data = await res.json();
           
-          if (data.status !== 'success') {
-            throw new Error(data.message || 'Failed to fetch topology');
-          }
+          if (data.status !== 'success') throw new Error(data.message || 'Failed to fetch topology');
 
           document.getElementById('topo-status-text').innerText = `Live: ${data.switches.length} Switches, ${data.hosts.length} Hosts`;
           document.getElementById('topo-status-dot').style.backgroundColor = 'var(--success-color)';
 
-          const visNodes = [];
-          const visEdges = [];
+          const activeNodes = new Set();
+          const activeEdges = new Set();
 
-          // Parse switches
-          if (data.switches && data.switches.length > 0) {
+          // Switches
+          if (data.switches) {
             data.switches.forEach(sw => {
-              const dpidNum = parseInt(sw.dpid, 16);
-              visNodes.push({
+              activeNodes.add(sw.dpid);
+              nodesDataset.update({
                 id: sw.dpid,
-                label: `Switch\nDPID: ${dpidNum}`,
+                label: `Switch\nDPID: ${parseInt(sw.dpid, 16)}`,
                 group: 'switch',
                 shape: 'hexagon',
                 color: { background: '#2563eb', border: '#60a5fa' },
-                font: { color: '#ffffff' },
+                font: { color: '#ffffff', size: 14 },
                 size: 30
               });
             });
           }
 
-          // Parse hosts
-          if (data.hosts && data.hosts.length > 0) {
+          // Hosts
+          if (data.hosts) {
             data.hosts.forEach(host => {
+              activeNodes.add(host.mac);
               const ip = (host.ipv4 && host.ipv4.length > 0) ? host.ipv4[0] : 'Unknown IP';
-              visNodes.push({
+              nodesDataset.update({
                 id: host.mac,
                 label: `Host\n${ip}\n${host.mac}`,
                 group: 'host',
                 shape: 'dot',
                 color: { background: '#059669', border: '#34d399' },
-                font: { color: '#ffffff' },
-                size: 15
+                font: { color: '#ffffff', size: 14 },
+                size: 18
               });
 
-              // Add edge from host to connected switch
               if (host.port && host.port.dpid) {
-                visEdges.push({
+                const edgeId = `host-${host.mac}-${host.port.dpid}`;
+                activeEdges.add(edgeId);
+                edgesDataset.update({
+                  id: edgeId,
                   from: host.mac,
                   to: host.port.dpid,
                   color: { color: 'rgba(255,255,255,0.4)' },
                   width: 2,
-                  dashes: true
+                  dashes: true,
+                  isSwitchLink: false
                 });
               }
             });
           }
 
-          // Parse switch-to-switch links
-          if (data.links && data.links.length > 0) {
-            const addedEdges = new Set();
+          // Links
+          if (data.links) {
             data.links.forEach(link => {
               const src = link.src.dpid;
               const dst = link.dst.dpid;
-              // Gunakan kombinasi DPID + Port Number agar parallel link tetap tampil 2 kabel!
               const srcPort = link.src.port_no;
               const dstPort = link.dst.port_no;
               
-              // Normalisasi string untuk memastikan bolak-balik (A->B dan B->A) dinilai sama
               const isSrcSmaller = src < dst;
-              const normalizedEdgeId = isSrcSmaller 
-                  ? `${src}:${srcPort}-${dst}:${dstPort}` 
-                  : `${dst}:${dstPort}-${src}:${srcPort}`;
+              const normalizedEdgeId = isSrcSmaller ? `${src}:${srcPort}-${dst}:${dstPort}` : `${dst}:${dstPort}-${src}:${srcPort}`;
+              activeEdges.add(normalizedEdgeId);
               
-              if (!addedEdges.has(normalizedEdgeId)) {
-                let linkColor = '#94a3b8';
-                let linkLabel = '';
-                
-                // Beri label/warna khusus untuk membedakan Main link dan Backup Link (contoh styling)
-                if (srcPort === "00000005" || dstPort === "00000005" || srcPort === "00000003" && dstPort === "00000005") {
-                     linkColor = '#f59e0b'; // Orange kuning untuk Backup Link
-                     linkLabel = 'Backup';
-                } else if (srcPort === "00000004" || dstPort === "00000004") {
-                     linkColor = '#10b981'; // Hijau untuk Main Link
-                     linkLabel = 'Main';
-                }
+              let linkColor = '#94a3b8';
+              let linkLabel = '';
+              
+              const isBackup = (srcPort === "00000005" || dstPort === "00000005" || srcPort === "00000003" || dstPort === "00000003" || (src === "0000000000000002" && srcPort === "00000004") || (dst === "0000000000000002" && dstPort === "00000004"));
+              
+              if (isBackup) {
+                   linkColor = '#f59e0b'; linkLabel = 'Backup';
+              } else {
+                   linkColor = '#10b981'; linkLabel = 'Main';
+              }
 
-                visEdges.push({
-                  from: src,
-                  to: dst,
-                  color: { color: linkColor },
-                  label: linkLabel,
-                  font: {color: '#cbd5e1', size: 10, align: 'top'},
-                  width: 3
-                });
-                addedEdges.add(normalizedEdgeId);
+              const existing = edgesDataset.get(normalizedEdgeId);
+              if (!existing || existing.label === 'DEAD' || existing._animating === undefined) {
+                  edgesDataset.update({
+                    id: normalizedEdgeId,
+                    from: src,
+                    to: dst,
+                    color: { color: linkColor },
+                    label: linkLabel,
+                    font: {color: '#cbd5e1', size: 14, align: 'top'},
+                    width: 3,
+                    dashes: false,
+                    isSwitchLink: true,
+                    srcDpid: src, srcPort: srcPort,
+                    dstDpid: dst, dstPort: dstPort,
+                    baseColor: linkColor, baseLabel: linkLabel,
+                    _animating: false
+                  });
               }
             });
           }
 
-          const container = document.getElementById('topology-network');
-          const graphData = {
-            nodes: new vis.DataSet(visNodes),
-            edges: new vis.DataSet(visEdges)
-          };
-          
-          const options = {
-            physics: {
-              solver: 'forceAtlas2Based',
-              forceAtlas2Based: {
-                gravitationalConstant: -100,
-                centralGravity: 0.01,
-                springLength: 150,
-                springConstant: 0.1
-              }
-            },
-            edges: {
-              smooth: {
-                type: 'dynamic',
-                roundness: 0.5
-              }
-            },
-            interaction: {
-              hover: true,
-              tooltipDelay: 200,
-            }
-          };
+          // Deteksi Kabel Mati
+          edgesDataset.forEach(edge => {
+             if (edge.isSwitchLink && !activeEdges.has(edge.id) && edge.label !== 'DEAD') {
+                 edgesDataset.update({
+                     id: edge.id,
+                     color: { color: '#ef4444' }, // Merah bata
+                     label: 'DEAD',
+                     dashes: [10, 10],
+                     width: 4,
+                     font: {color: '#ef4444', size: 14, align: 'top'},
+                     _animating: false
+                 });
+             }
+             if (!edge.isSwitchLink && !activeEdges.has(edge.id)) {
+                 edgesDataset.remove(edge.id);
+             }
+          });
 
-          network = new vis.Network(container, graphData, options);
+          nodesDataset.forEach(node => {
+             if (!activeNodes.has(node.id)) {
+                 nodesDataset.remove(node.id);
+             }
+          });
+
+          if (!network) {
+            const container = document.getElementById('topology-network');
+            const graphData = { nodes: nodesDataset, edges: edgesDataset };
+            const options = {
+              physics: {
+                solver: 'forceAtlas2Based',
+                forceAtlas2Based: { gravitationalConstant: -100, centralGravity: 0.01, springLength: 150, springConstant: 0.1 }
+              },
+              edges: { smooth: { type: 'dynamic', roundness: 0.5 } },
+              interaction: { hover: true, tooltipDelay: 200 }
+            };
+            network = new vis.Network(container, graphData, options);
+          }
 
         } catch (e) {
           console.error(e);
@@ -412,11 +461,63 @@
         }
       }
 
+      async function fetchTraffic() {
+         if (!network || edgesDataset.length === 0) return;
+         try {
+             const res = await fetch('/api/traffic_stats');
+             const data = await res.json();
+             if (data.status === 'success') {
+                 const currentStats = data.stats;
+                 
+                 edgesDataset.forEach(edge => {
+                    if (edge.isSwitchLink && edge.label !== 'DEAD' && edge.srcDpid && edge.dstDpid) {
+                       let tx1 = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].tx : 0;
+                       let tx2 = currentStats[edge.dstDpid] && currentStats[edge.dstDpid][edge.dstPort] ? currentStats[edge.dstDpid][edge.dstPort].tx : 0;
+                       let prevTx1 = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].tx : tx1;
+                       let prevTx2 = previousStats[edge.dstDpid] && previousStats[edge.dstDpid][edge.dstPort] ? previousStats[edge.dstDpid][edge.dstPort].tx : tx2;
+                       
+                       let delta1 = tx1 - prevTx1;
+                       let delta2 = tx2 - prevTx2;
+                       
+                       // Threshold trafik ping (contoh: PINGALL mengirim paket ICMP konstan)
+                       if (delta1 > 50 || delta2 > 50) {  
+                           // Animasi Active Traffic Pulse!
+                           edgesDataset.update({
+                               id: edge.id, 
+                               color: { color: '#22d3ee' }, // Nyala Biru/Cyan terang
+                               width: 8, // Menggembung tebal seolah ada data mengalir
+                               font: {color: '#22d3ee', size: 16, align: 'top'},
+                               label: (edge.baseLabel || "") + ' (Active Ping)',
+                               _animating: true
+                           });
+                       } else {
+                           // Kembalikan ke normal jika traffic berhenti dan sebelumnya menyala
+                           if (edge._animating) {
+                               edgesDataset.update({
+                                   id: edge.id,
+                                   color: { color: edge.baseColor },
+                                   width: 3, // Kembali langsing standard
+                                   font: {color: '#cbd5e1', size: 14, align: 'top'},
+                                   label: edge.baseLabel,
+                                   _animating: false
+                               });
+                           }
+                       }
+                    }
+                 });
+                 previousStats = currentStats;
+             }
+         } catch(e) {}
+      }
+
       // Initialize
       drawTopology();
       
-      // Refresh topology every 15 seconds
-      setInterval(drawTopology, 15000);
+      // Refresh topology architecture every 10 seconds
+      setInterval(drawTopology, 10000);
+      
+      // Polling traffic stats independently every 2 seconds for pulse animation
+      setInterval(fetchTraffic, 2000);
     </script>
   </body>
 </html>

@@ -6,4 +6,5 @@ urlpatterns = [
     path('block_ip', views.block_ip, name='block_ip'),
     path('unblock_ip', views.unblock_ip, name='unblock_ip'),
     path('api/topology', views.api_topology, name='api_topology'),
+    path('api/traffic_stats', views.api_traffic_stats, name='api_traffic_stats'),
 ]

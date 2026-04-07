@@ -69,47 +69,11 @@ def api_topology(request):
         links_resp = requests.get(f'{RYU_API}/v1.0/topology/links', timeout=5)
         hosts_resp = requests.get(f'{RYU_API}/v1.0/topology/hosts', timeout=5)
         
-        # Definisikan static hosts di sini untuk memastikan Vis.js selalu memunculkannya
-        # sesuai dengan topo_linear.py (karena kalau 0% ping, Ryu REST tidak mendeteksinya secara dinamis)
-        static_hosts = [
-            {"mac": "00:00:00:00:00:01", "ipv4": ["10.0.1.1"], "port": {"dpid": "0000000000000001"}},
-            {"mac": "00:00:00:00:00:02", "ipv4": ["10.0.1.2"], "port": {"dpid": "0000000000000001"}},
-            {"mac": "00:00:00:00:00:05", "ipv4": ["10.0.1.5"], "port": {"dpid": "0000000000000001"}},
-            {"mac": "00:00:00:00:00:03", "ipv4": ["10.0.2.3"], "port": {"dpid": "0000000000000003"}},
-            {"mac": "00:00:00:00:00:04", "ipv4": ["10.0.2.4"], "port": {"dpid": "0000000000000003"}},
-            {"mac": "00:00:00:00:00:06", "ipv4": ["10.0.2.6"], "port": {"dpid": "0000000000000003"}},
-        ]
-        
-        dynamic_hosts = hosts_resp.json() if hosts_resp.status_code == 200 else []
-        # Gabung tanpa duplikat berdasarkan MAC
-        existing_macs = {h['mac'] for h in dynamic_hosts}
-        for static_h in static_hosts:
-            if static_h['mac'] not in existing_macs:
-                dynamic_hosts.append(static_h)
-        
-        # Inject custom label or link styling indicator into switches data (optional but ensures visual matches)
-        dynamic_switches = switches_resp.json() if switches_resp.status_code == 200 else []
-        dynamic_links = links_resp.json() if links_resp.status_code == 200 else []
-
-        # Ensure that static switches are also injected just in case the controller is totally blank
-        if not dynamic_switches:
-            dynamic_switches = [
-                {"dpid": "0000000000000001"},
-                {"dpid": "0000000000000002"},
-                {"dpid": "0000000000000003"},
-            ]
-            dynamic_links = [
-                {"src": {"dpid": "0000000000000001", "port_no": "00000004"}, "dst": {"dpid": "0000000000000002", "port_no": "00000001"}},
-                {"src": {"dpid": "0000000000000001", "port_no": "00000005"}, "dst": {"dpid": "0000000000000002", "port_no": "00000003"}},  # backup
-                {"src": {"dpid": "0000000000000002", "port_no": "00000002"}, "dst": {"dpid": "0000000000000003", "port_no": "00000004"}},
-                {"src": {"dpid": "0000000000000002", "port_no": "00000004"}, "dst": {"dpid": "0000000000000003", "port_no": "00000005"}},  # backup
-            ]
-
         return JsonResponse({
             'status': 'success',
-            'switches': dynamic_switches,
-            'links': dynamic_links,
-            'hosts': dynamic_hosts
+            'switches': switches_resp.json() if switches_resp.status_code == 200 else [],
+            'links': links_resp.json() if links_resp.status_code == 200 else [],
+            'hosts': hosts_resp.json() if hosts_resp.status_code == 200 else []
         })
     except requests.exceptions.RequestException as e:
         return JsonResponse({
@@ -118,4 +82,43 @@ def api_topology(request):
             'switches': [],
             'links': [],
             'hosts': []
+        }, status=500)
+
+def api_traffic_stats(request):
+    """
+    Fetch port stats from Ryu controller to calculate traffic bytes.
+    Queries switches 1, 2, and 3.
+    """
+    try:
+        stats = {}
+        for dpid in [1, 2, 3]:
+            resp = requests.get(f'{RYU_API}/stats/port/{dpid}', timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                # Ryu returns {"1": [{"port_no": 1, "tx_bytes": ..., "rx_bytes": ...}, ...]}
+                str_dpid = str(dpid)
+                if str_dpid in data:
+                    stats[str_dpid] = {}
+                    for port_stat in data[str_dpid]:
+                        port_no = port_stat.get('port_no')
+                        if port_no != 'LOCAL':
+                            # Normalisasi DPID ke format panjang untuk konsistensi dengan UI (e.g. "0000000000000001")
+                            dpid_hex = str(dpid).zfill(16)
+                            port_hex = str(port_no).zfill(8)
+                            tx = port_stat.get('tx_bytes', 0)
+                            rx = port_stat.get('rx_bytes', 0)
+                            
+                            if dpid_hex not in stats:
+                                stats[dpid_hex] = {}
+                            stats[dpid_hex][port_hex] = {'tx': tx, 'rx': rx}
+
+        return JsonResponse({
+            'status': 'success',
+            'stats': stats
+        })
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': f'Failed to fetch traffic stats: {str(e)}',
+            'stats': {}
         }, status=500)
