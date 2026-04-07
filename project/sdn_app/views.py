@@ -122,3 +122,34 @@ def api_traffic_stats(request):
             'message': f'Failed to fetch traffic stats: {str(e)}',
             'stats': {}
         }, status=500)
+
+@csrf_exempt
+def api_port_control(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            dpid = int(data.get('dpid', 0))
+            port_no = int(data.get('port_no', 0))
+            action = data.get('action') # 'down' or 'up'
+            
+            if not dpid or not port_no or action not in ['up', 'down']:
+                return JsonResponse({'status': 'error', 'message': 'Invalid parameters'}, status=400)
+                
+            config_val = 1 if action == 'down' else 0
+            
+            payload = {
+                "dpid": dpid,
+                "port_no": port_no,
+                "config": config_val,
+                "mask": 1
+            }
+            
+            response = requests.post(f"{RYU_API}/stats/portdesc/modify", json=payload, timeout=5)
+            response.raise_for_status()
+            
+            return JsonResponse({'status': 'success', 'message': f'Port {port_no} on Switch {dpid} set to {action.upper()}'})
+        except requests.exceptions.RequestException as e:
+            return JsonResponse({'status': 'error', 'message': f'Ryu REST failure: {str(e)}'}, status=500)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
