@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SDN Control & Topology Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Vis Network -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+      :root {
+        --bg-color: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.7);
+        --primary-color: #3b82f6;
+        --danger-color: #ef4444;
+        --success-color: #10b981;
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border-color: rgba(255, 255, 255, 0.1);
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        margin: 0;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      h1, h2 {
+        font-weight: 800;
+        margin-top: 0;
+        letter-spacing: -0.5px;
+      }
+
+      h1 {
+        text-align: center;
+        background: linear-gradient(90deg, #60a5fa, #c084fc);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 30px;
+        font-size: 2.5rem;
+      }
+
+      .container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      @media (min-width: 1024px) {
+        .container {
+          grid-template-columns: 350px 1fr;
+        }
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        padding: 24px;
+        border-radius: 16px;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .card h2 {
+        font-size: 1.25rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .card h2::before {
+        content: '';
+        display: block;
+        width: 8px;
+        height: 24px;
+        background: var(--primary-color);
+        border-radius: 4px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      input[type="text"] {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      input[type="text"]:focus {
+        border-color: var(--primary-color);
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+      }
+
+      button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-family: inherit;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        color: white;
+        transition: opacity 0.2s, transform 0.1s;
+      }
+
+      button.block-btn {
+        background: var(--danger-color);
+      }
+
+      button.unblock-btn {
+        background: var(--success-color);
+      }
+
+      button:hover {
+        opacity: 0.9;
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      #result {
+        margin-top: 15px;
+        padding: 15px;
+        background: rgba(0,0,0,0.3);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        border: 1px solid var(--border-color);
+        min-height: 80px;
+      }
+
+      .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-width: 0;
+      }
+
+      #topology-network {
+        width: 100%;
+        height: 450px;
+        background: rgba(15, 23, 42, 0.5);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+      }
+
+      .grafana-container {
+        width: 100%;
+        height: 600px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+      }
+
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+      
+      .status-indicator {
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--text-secondary);
+        margin-top: 10px;
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>SDN Intelligence Center</h1>
+
+    <div class="container">
+      <!-- Left Panel: Control -->
+      <aside>
+        <div class="card">
+          <h2>Security Control</h2>
+          <div class="form-group">
+            <input type="text" id="ip" placeholder="Enter IP Address (e.g. 10.0.0.1)" />
+          </div>
+          <div class="button-group">
+            <button class="block-btn" onclick="blockIP()">Block IP</button>
+            <button class="unblock-btn" onclick="unblockIP()">Unblock IP</button>
+          </div>
+          <div id="result">Response output will appear here...</div>
+        </div>
+      </aside>
+
+      <!-- Right Panel: Vis & Monitoring -->
+      <main class="main-content">
+        <div class="card">
+          <h2>Network Topology</h2>
+          <div id="topology-network"></div>
+          <div class="status-indicator">
+            <div class="status-dot tooltip" id="topo-status-dot"></div>
+            <span id="topo-status-text">Fetching topology data...</span>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 0; border: none; background: transparent; box-shadow: none;">
+          <h2 style="padding: 0 10px;">Metrics & Monitoring</h2>
+          <div class="grafana-container">
+            <iframe src="http://103.183.74.87:3000/public-dashboards/8bc610f47c9b4b6a9c077196f287a392"></iframe>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      // API call helper
+      async function triggerAPI(endpoint, ip) {
+        if (!ip) {
+          document.getElementById("result").innerText = "Please enter an IP address.";
+          return;
+        }
+
+        document.getElementById("result").innerText = "Processing...";
+        
+        try {
+          const res = await fetch(`/${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ip: ip }),
+          });
+          const data = await res.json();
+          document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+        } catch (e) {
+          document.getElementById("result").innerText = `Error: ${e.message}`;
+        }
+      }
+
+      function blockIP() {
+        triggerAPI("block_ip", document.getElementById("ip").value);
+      }
+
+      function unblockIP() {
+        triggerAPI("unblock_ip", document.getElementById("ip").value);
+      }
+
+      // Vis-Network Topology Logic
+      let network = null;
+      
+      async function drawTopology() {
+        try {
+          const res = await fetch('/api/topology');
+          const data = await res.json();
+          
+          if (data.status !== 'success') {
+            throw new Error(data.message || 'Failed to fetch topology');
+          }
+
+          document.getElementById('topo-status-text').innerText = `Live: ${data.switches.length} Switches, ${data.hosts.length} Hosts`;
+          document.getElementById('topo-status-dot').style.backgroundColor = 'var(--success-color)';
+
+          const visNodes = [];
+          const visEdges = [];
+
+          // Parse switches
+          if (data.switches && data.switches.length > 0) {
+            data.switches.forEach(sw => {
+              const dpidNum = parseInt(sw.dpid, 16);
+              visNodes.push({
+                id: sw.dpid,
+                label: `Switch\nDPID: ${dpidNum}`,
+                group: 'switch',
+                shape: 'hexagon',
+                color: { background: '#2563eb', border: '#60a5fa' },
+                font: { color: '#ffffff' },
+                size: 30
+              });
+            });
+          }
+
+          // Parse hosts
+          if (data.hosts && data.hosts.length > 0) {
+            data.hosts.forEach(host => {
+              const ip = (host.ipv4 && host.ipv4.length > 0) ? host.ipv4[0] : 'Unknown IP';
+              visNodes.push({
+                id: host.mac,
+                label: `Host\n${ip}\n${host.mac}`,
+                group: 'host',
+                shape: 'dot',
+                color: { background: '#059669', border: '#34d399' },
+                font: { color: '#ffffff' },
+                size: 15
+              });
+
+              // Add edge from host to connected switch
+              if (host.port && host.port.dpid) {
+                visEdges.push({
+                  from: host.mac,
+                  to: host.port.dpid,
+                  color: { color: 'rgba(255,255,255,0.4)' },
+                  width: 2,
+                  dashes: true
+                });
+              }
+            });
+          }
+
+          // Parse switch-to-switch links
+          if (data.links && data.links.length > 0) {
+            const addedEdges = new Set();
+            data.links.forEach(link => {
+              const src = link.src.dpid;
+              const dst = link.dst.dpid;
+              // Gunakan kombinasi DPID + Port Number agar parallel link tetap tampil 2 kabel!
+              const srcPort = link.src.port_no;
+              const dstPort = link.dst.port_no;
+              
+              // Normalisasi string untuk memastikan bolak-balik (A->B dan B->A) dinilai sama
+              const isSrcSmaller = src < dst;
+              const normalizedEdgeId = isSrcSmaller 
+                  ? `${src}:${srcPort}-${dst}:${dstPort}` 
+                  : `${dst}:${dstPort}-${src}:${srcPort}`;
+              
+              if (!addedEdges.has(normalizedEdgeId)) {
+                let linkColor = '#94a3b8';
+                let linkLabel = '';
+                
+                // Beri label/warna khusus untuk membedakan Main link dan Backup Link (contoh styling)
+                if (srcPort === "00000005" || dstPort === "00000005" || srcPort === "00000003" && dstPort === "00000005") {
+                     linkColor = '#f59e0b'; // Orange kuning untuk Backup Link
+                     linkLabel = 'Backup';
+                } else if (srcPort === "00000004" || dstPort === "00000004") {
+                     linkColor = '#10b981'; // Hijau untuk Main Link
+                     linkLabel = 'Main';
+                }
+
+                visEdges.push({
+                  from: src,
+                  to: dst,
+                  color: { color: linkColor },
+                  label: linkLabel,
+                  font: {color: '#cbd5e1', size: 10, align: 'top'},
+                  width: 3
+                });
+                addedEdges.add(normalizedEdgeId);
+              }
+            });
+          }
+
+          const container = document.getElementById('topology-network');
+          const graphData = {
+            nodes: new vis.DataSet(visNodes),
+            edges: new vis.DataSet(visEdges)
+          };
+          
+          const options = {
+            physics: {
+              solver: 'forceAtlas2Based',
+              forceAtlas2Based: {
+                gravitationalConstant: -100,
+                centralGravity: 0.01,
+                springLength: 150,
+                springConstant: 0.1
+              }
+            },
+            edges: {
+              smooth: {
+                type: 'dynamic',
+                roundness: 0.5
+              }
+            },
+            interaction: {
+              hover: true,
+              tooltipDelay: 200,
+            }
+          };
+
+          network = new vis.Network(container, graphData, options);
+
+        } catch (e) {
+          console.error(e);
+          document.getElementById('topo-status-text').innerText = `Error: ${e.message}`;
+          document.getElementById('topo-status-dot').style.backgroundColor = 'var(--danger-color)';
+        }
+      }
+
+      // Initialize
+      drawTopology();
+      
+      // Refresh topology every 15 seconds
+      setInterval(drawTopology, 15000);
+    </script>
+  </body>
+</html>

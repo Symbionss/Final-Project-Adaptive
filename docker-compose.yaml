@@ -1,0 +1,71 @@
+version: "3.8"
+
+services:
+  ryu:
+    image: osrg/ryu
+    container_name: ryu
+    ports:
+      - "6653:6653"
+      - "8080:8080"
+    volumes:
+      - ./ryu/sdn_controller.py:/app/sdn_controller.py
+    command: >
+      sh -c "ryu-manager
+      --ofp-tcp-listen-port 6653
+      --observe-links
+      /app/sdn_controller.py
+      ryu.app.ofctl_rest
+      ryu.app.rest_topology
+      ryu.app.ws_topology"
+    restart: unless-stopped
+
+  flask:
+    build: ./project
+    container_name: flask
+    ports:
+      - "5000:5000"
+    environment:
+      - RYU_API=http://ryu:8080
+    depends_on:
+      - ryu
+    restart: unless-stopped
+
+  exporter:
+    build: ./exporter
+    container_name: exporter
+    ports:
+      - "9100:9100"
+    depends_on:
+      - ryu
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter
+    container_name: node-exporter
+    ports:
+      - "9101:9100"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - exporter
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    depends_on:
+      - prometheus
+    restart: unless-stopped
