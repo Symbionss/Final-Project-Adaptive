@@ -403,7 +403,7 @@
                     to: dst,
                     color: { color: linkColor },
                     label: linkLabel,
-                    font: {color: '#cbd5e1', size: 14, align: 'top'},
+                    font: {color: '#f8fafc', size: 14, align: 'top', strokeWidth: 3, strokeColor: '#000000'},
                     width: 3,
                     dashes: false,
                     isSwitchLink: true,
@@ -425,7 +425,7 @@
                      label: 'DEAD',
                      dashes: [10, 10],
                      width: 4,
-                     font: {color: '#ef4444', size: 14, align: 'top'},
+                     font: {color: '#fca5a5', size: 14, align: 'top', strokeWidth: 3, strokeColor: '#450a0a'},
                      _animating: false
                  });
              }
@@ -444,6 +444,9 @@
             const container = document.getElementById('topology-network');
             const graphData = { nodes: nodesDataset, edges: edgesDataset };
             const options = {
+              layout: {
+                randomSeed: 8 // Angka seed paten agar orientasi selalu sejajar sama tiap kali refresh (landscape)
+              },
               physics: {
                 solver: 'forceAtlas2Based',
                 forceAtlas2Based: { gravitationalConstant: -100, centralGravity: 0.01, springLength: 150, springConstant: 0.1 }
@@ -479,14 +482,14 @@
                        let delta1 = tx1 - prevTx1;
                        let delta2 = tx2 - prevTx2;
                        
-                       // Threshold trafik ping (contoh: PINGALL mengirim paket ICMP konstan)
-                       if (delta1 > 50 || delta2 > 50) {  
+                       // Threshold trafik logik. Angka dinaikkan ke 400 untuk mengabaikan paket kecil seperti LLDP/Echo ryu
+                       if (delta1 > 400 || delta2 > 400) {  
                            // Animasi Active Traffic Pulse!
                            edgesDataset.update({
                                id: edge.id, 
-                               color: { color: '#22d3ee' }, // Nyala Biru/Cyan terang
-                               width: 8, // Menggembung tebal seolah ada data mengalir
-                               font: {color: '#22d3ee', size: 16, align: 'top'},
+                               color: { color: '#0ea5e9' }, // Cyan Terang
+                               width: 8,
+                               font: {color: '#ffffff', size: 16, align: 'top', strokeWidth: 4, strokeColor: '#000000'},
                                label: (edge.baseLabel || "") + ' (Active Ping)',
                                _animating: true
                            });
@@ -496,8 +499,8 @@
                                edgesDataset.update({
                                    id: edge.id,
                                    color: { color: edge.baseColor },
-                                   width: 3, // Kembali langsing standard
-                                   font: {color: '#cbd5e1', size: 14, align: 'top'},
+                                   width: 3,
+                                   font: {color: '#f8fafc', size: 14, align: 'top', strokeWidth: 3, strokeColor: '#000000'},
                                    label: edge.baseLabel,
                                    _animating: false
                                });
