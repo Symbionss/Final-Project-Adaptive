@@ -274,21 +274,9 @@ async function executeControl(action, val) {
     }
 }
 
-function rebuildDropdown() {
-    const sel = document.getElementById('link-selector');
-    let html = '<option value="">-- Please Select Link --</option>';
-    for (const [val, lbl] of Object.entries(dropdownLabelMap)) {
-        const dead   = edgeStateMap[val] === 'dead';
-        const badge  = dead ? ' 🔴 DEAD' : ' 🟢';
-        html += `<option value="${val}">🔌 ${lbl}${badge}</option>`;
-    }
-    sel.innerHTML = html;
-    if (lastSelection && dropdownLabelMap[lastSelection]) {
-        sel.value = lastSelection;
-    }
-}
 
 // ── Topology Drawing ──────────────────────────────────────────────────────────
+
 async function drawTopology() {
     try {
         const res  = await fetch('/api/topology');
@@ -426,8 +414,8 @@ async function drawTopology() {
         });
         nodesDataset.forEach(n => { if (!activeNodes.has(n.id)) nodesDataset.remove(n.id); });
 
-        // Rebuild dropdown preserving last selection
-        rebuildDropdown();
+        // Update dropdown badges to reflect current state
+        refreshDropdownBadges();
 
         if (!network) {
             network = new vis.Network(

@@ -62,4 +62,6 @@ USE_TZ = True
 STATIC_URL = '/static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-RYU_API = os.environ.get('RYU_API', 'http://103.183.74.87:8080')
+RYU_API     = os.environ.get('RYU_API',     'http://103.183.74.87:8080')
+GRAFANA_URL = os.environ.get('GRAFANA_URL', 'http://103.183.74.87:3000')
+

@@ -26,6 +26,7 @@ services:
       - "5000:5000"
     environment:
       - RYU_API=http://ryu:8080
+      - GRAFANA_URL=http://103.183.74.87:3000
     depends_on:
       - ryu
     restart: unless-stopped
@@ -68,6 +69,7 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_X_FRAME_OPTIONS=
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/etc/grafana/provisioning/dashboards/sdn_network.json
     volumes:
       - grafana_data:/var/lib/grafana
