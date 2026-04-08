@@ -13,14 +13,14 @@
     <!-- Vis Network -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <!-- Added cache busting v=3 to ensure refresh -->
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
   </head>
   <body>
     <!-- Overlay UI Header -->
     <div class="top-nav">
        <div class="toggle-group">
-          <button class="toggle-btn" id="btn-realtime" onclick="toggleGrafana()"><i class="fa-solid fa-bolt"></i> Real time</button>
-          <button class="toggle-btn" id="btn-simulation" onclick="showSimulationModal()"><i class="fa-solid fa-clock-rotate-left"></i> Simulation</button>
+          <button class="toggle-btn" id="btn-grafana"><i class="fa-solid fa-chart-line"></i> Tampilkan Grafana</button>
+          <button class="toggle-btn" id="btn-perf"><i class="fa-solid fa-satellite-dish"></i> Status Sinyal</button>
        </div>
        <div class="title-glow">SDN Intelligence Center</div>
     </div>
@@ -33,11 +33,31 @@
     </div>
 
     <!-- Floating Panels -->
-    <!-- Metrics Panel -->
-    <div class="floating-panel metrics-panel" id="metrics-panel" style="display: none; opacity: 0; transition: 0.3s;">
+
+    <!-- Metrics Panel (Grafana) -->
+    <div class="floating-panel metrics-panel panel-hidden" id="panel-grafana">
         <h3><i class="fa-solid fa-chart-line"></i> Grafana Metrics</h3>
         <div class="grafana-container">
            <iframe src="http://103.183.74.87:3000/public-dashboards/8bc610f47c9b4b6a9c077196f287a392"></iframe>
+        </div>
+    </div>
+
+    <!-- Performance Panel (Simulated) -->
+    <div class="floating-panel metrics-panel panel-hidden" id="panel-perf">
+        <h3><i class="fa-solid fa-gauge-high"></i> Signal Performance</h3>
+        <div class="perf-stats">
+           <div class="perf-item">
+              <span class="perf-label">Latency</span>
+              <span class="perf-value" id="sim-latency">12 ms</span>
+           </div>
+           <div class="perf-item">
+              <span class="perf-label">Throughput</span>
+              <span class="perf-value" id="sim-throughput">1.2 Gbps</span>
+           </div>
+           <div class="perf-item">
+              <span class="perf-label">Jitter</span>
+              <span class="perf-value" id="sim-jitter">2 ms</span>
+           </div>
         </div>
     </div>
 
@@ -49,29 +69,6 @@
        <button class="tool-btn"><i class="fa-solid fa-gear"></i></button>
     </div>
 
-    <!-- Simulation Modal -->
-    <div id="sim-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 100; backdrop-filter: blur(5px); justify-content: center; align-items: center;">
-      <div style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 30px; border-radius: 16px; width: 350px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
-        <h2 style="margin-top: 0; color: var(--text-primary);"><i class="fa-solid fa-microchip" style="color: var(--primary-color);"></i> Simulation Metrics</h2>
-        <div style="display:flex; flex-direction: column; gap: 15px; margin-top: 20px;">
-           <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Average Latency</div>
-              <div style="font-size: 1.5rem; font-weight: bold; color: var(--success-color);" id="sim-latency">12.4 ms</div>
-           </div>
-           <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Throughput</div>
-              <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);" id="sim-throughput">105.2 Mbps</div>
-           </div>
-           <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
-              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Jitter</div>
-              <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;" id="sim-jitter">1.2 ms</div>
-           </div>
-        </div>
-        <button onclick="document.getElementById('sim-modal').style.display='none'; clearInterval(window.simInterval);" style="margin-top: 20px; width: 100%; background: var(--primary-color); padding: 10px; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">Close Preview</button>
-      </div>
-    </div>
-
-    <!-- Script cache bust v=4 -->
     <script src="{% static 'js/script.js' %}?v=4"></script>
   </body>
 </html>
