@@ -247,6 +247,9 @@ async function executeControl(action, val) {
         const data = await res.json();
         document.getElementById('result').innerText =
             `> [${action.toUpperCase()}] Done:\n` + JSON.stringify(data, null, 2);
+
+        // Force immediate topology refresh so visual updates without waiting 10s
+        setTimeout(drawTopology, 1500);
     } catch (e) {
         document.getElementById('result').innerHTML =
             `<span style='color:var(--danger-color)'>✖ Error: ${e.message}</span>`;
@@ -334,6 +337,7 @@ async function drawTopology() {
         });
 
         // Switch–Switch Links
+        const seenDKeys = new Set(); // track which dropdown keys we saw this round
         (data.links || []).forEach(link => {
             const src = link.src.dpid, dst = link.dst.dpid;
             const srcPort = link.src.port_no, dstPort = link.dst.port_no;
@@ -355,8 +359,26 @@ async function drawTopology() {
             const s2    = parseInt(dst, 16);
             const port  = parseInt(srcPort, 16);
             const dKey  = `${s1}:${port}`;
+            seenDKeys.add(dKey);
 
             dropdownLabelMap[dKey] = `[Sw ${s1}] Port ${port} → S${s2} (${lbl})`;
+
+            // If this link just came back alive (after restore), reset state
+            if (edgeStateMap[dKey] === 'dead') {
+                edgeStateMap[dKey] = 'alive';
+                // Restore edge styling immediately
+                const existingEid = edgesDataset.get(eid);
+                if (existingEid) {
+                    edgesDataset.update({
+                        id: eid,
+                        color: { color: lc, highlight: '#6ee7b7', hover: '#6ee7b7' },
+                        label: lbl, dashes: false, width: 4,
+                        font: { color:'#f8fafc', size:11, align:'top', strokeWidth:3, strokeColor:'#0b0f19', background:'rgba(11,15,25,0.8)' },
+                        shadow: { enabled:true, color:lc, size:14, x:0, y:0 },
+                        baseColor: lc, baseLabel: lbl, _animating: false,
+                    });
+                }
+            }
             if (!edgeStateMap[dKey]) edgeStateMap[dKey] = 'alive';
 
             if (!edgesDataset.get(eid) || edgesDataset.get(eid)._animating === undefined) {
@@ -374,6 +396,13 @@ async function drawTopology() {
                 });
             }
         });
+
+        // FIX: Any dropdown key NOT seen this round = link is down → mark as dead so it stays in dropdown
+        for (const dKey of Object.keys(dropdownLabelMap)) {
+            if (!seenDKeys.has(dKey) && edgeStateMap[dKey] !== 'dead') {
+                edgeStateMap[dKey] = 'dead';
+            }
+        }
 
         // Mark dead edges
         edgesDataset.forEach(edge => {
@@ -399,13 +428,47 @@ async function drawTopology() {
                 document.getElementById('topology-network'),
                 { nodes: nodesDataset, edges: edgesDataset },
                 {
-                    layout: { randomSeed: 8 },
-                    physics: { solver: 'forceAtlas2Based', forceAtlas2Based: { gravitationalConstant: -120, centralGravity: 0.015, springLength: 200, springConstant: 0.08 } },
-                    edges: { smooth: { type: 'dynamic', roundness: 0.5 } },
-                    interaction: { hover: true, tooltipDelay: 200 },
+                    layout: { randomSeed: 12 },
+                    physics: {
+                        enabled: true,
+                        solver: 'barnesHut',
+                        barnesHut: {
+                            gravitationalConstant: -8000,  // Strong repulsion keeps nodes far apart
+                            centralGravity: 0.1,
+                            springLength: 250,             // Long cables = nodes spread out
+                            springConstant: 0.04,          // Low = softer spring, less "karet"
+                            damping: 0.12,                 // High damping = settles quickly
+                            avoidOverlap: 1,               // Prevent overlapping nodes
+                        },
+                        stabilization: {
+                            enabled: true,
+                            iterations: 200,               // Settle into position on load
+                            updateInterval: 25,
+                            fit: true,
+                        },
+                    },
+                    edges: {
+                        smooth: {
+                            enabled: true,
+                            type: 'curvedCW',              // Slight curve only, not floppy
+                            roundness: 0.1,                // Low = nearly straight lines
+                        },
+                    },
+                    interaction: {
+                        hover: true,
+                        tooltipDelay: 200,
+                        dragNodes: true,                   // Let user reposition nodes manually
+                        zoomView: true,
+                    },
                 }
             );
+
+            // After stabilization, disable physics so nodes stay fixed (no more bouncing)
+            network.once('stabilizationIterationsDone', function() {
+                network.setOptions({ physics: { enabled: false } });
+            });
         }
+
     } catch (e) {
         console.error(e);
         document.getElementById('topo-status-text').innerText = `Error: ${e.message}`;

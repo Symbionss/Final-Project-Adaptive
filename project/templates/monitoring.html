@@ -2,12 +2,140 @@
 
 {% block page_title %}Grafana Metrics Monitoring{% endblock %}
 
+{% block extra_css %}
+.settings-panel {
+    background: rgba(17,24,39,0.8);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.settings-toggle {
+    background: rgba(15,23,42,0.6);
+    border: 1px solid rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.settings-toggle:hover { background: rgba(255,255,255,0.07); color: var(--text-primary); }
+{% endblock %}
+
 {% block content %}
-<div class="card" style="flex:1; padding:0; overflow:hidden; border: 1px solid rgba(255,255,255,0.05);">
-    <iframe 
-        src="http://103.183.74.87:3000/public-dashboards/8bc610f47c9b4b6a9c077196f287a392"
-        style="width:100%; height:100%; border:none; min-height:800px;"
+<!-- Grafana URL Settings Bar -->
+<div class="settings-panel" id="settings-bar" style="display:none;">
+    <i class="ph ph-link" style="color:var(--primary-blue); font-size:1.2rem; flex-shrink:0;"></i>
+    <div style="flex:1; min-width:0;">
+        <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:6px;">Grafana Public Dashboard URL</div>
+        <input
+            type="text"
+            id="grafana-url-input"
+            class="form-control"
+            style="width:100%; font-size:0.9rem;"
+            placeholder="http://103.183.74.87:3000/public-dashboards/..."
+        />
+    </div>
+    <div style="display:flex; gap:8px; flex-shrink:0;">
+        <button class="btn btn-primary" onclick="saveGrafanaUrl()" style="padding:10px 18px;">
+            <i class="ph-bold ph-floppy-disk"></i> Save
+        </button>
+        <button class="btn" style="background:#374151;color:white;padding:10px 14px;" onclick="toggleSettings()">
+            <i class="ph-bold ph-x"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Topbar Action -->
+<div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:4px;">
+    <div style="font-size:0.875rem; color:var(--text-secondary); display:flex; align-items:center; gap:8px;">
+        <i class="ph ph-info-circle"></i>
+        Dashboard realtime dari Grafana. Gunakan <strong style="color:var(--text-primary);">Share → Public Dashboard</strong> di Grafana untuk mendapatkan URL.
+    </div>
+    <button class="settings-toggle" onclick="toggleSettings()" id="settings-btn">
+        <i class="ph ph-gear"></i> Ganti URL Grafana
+    </button>
+</div>
+
+<!-- Grafana iframe -->
+<div class="card" style="flex:1; padding:0; overflow:hidden; min-height:0; position:relative;">
+    <div id="grafana-placeholder" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:400px;gap:20px;color:var(--text-secondary);">
+        <i class="ph ph-chart-bar" style="font-size:4rem;opacity:0.3;"></i>
+        <div style="text-align:center;">
+            <p style="margin:0 0 8px;font-size:1rem;font-weight:600;color:var(--text-primary);">Belum ada Grafana URL</p>
+            <p style="margin:0;font-size:0.875rem;max-width:400px;line-height:1.6;">
+                Klik tombol <strong style="color:var(--primary-blue);">"Ganti URL Grafana"</strong> di atas dan masukkan Public Dashboard URL dari Grafana Anda.
+            </p>
+        </div>
+        <button class="btn btn-primary" onclick="toggleSettings()">
+            <i class="ph ph-gear"></i> Set Grafana URL Sekarang
+        </button>
+    </div>
+    <iframe
+        id="grafana-iframe"
+        style="width:100%;height:100%;min-height:750px;border:none;display:none;"
         allowtransparency="true"
     ></iframe>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const STORAGE_KEY = 'sdn_grafana_url';
+
+function toggleSettings() {
+    const bar = document.getElementById('settings-bar');
+    const btn = document.getElementById('settings-btn');
+    const isHidden = bar.style.display === 'none';
+    bar.style.display = isHidden ? 'flex' : 'none';
+    if (isHidden) {
+        // Pre-fill with current URL
+        const saved = localStorage.getItem(STORAGE_KEY) || '';
+        document.getElementById('grafana-url-input').value = saved;
+        document.getElementById('grafana-url-input').focus();
+    }
+}
+
+function saveGrafanaUrl() {
+    const url = document.getElementById('grafana-url-input').value.trim();
+    if (!url) {
+        alert('URL tidak boleh kosong!');
+        return;
+    }
+    localStorage.setItem(STORAGE_KEY, url);
+    loadGrafana(url);
+    document.getElementById('settings-bar').style.display = 'none';
+}
+
+function loadGrafana(url) {
+    const iframe = document.getElementById('grafana-iframe');
+    const placeholder = document.getElementById('grafana-placeholder');
+    if (url) {
+        iframe.src = url;
+        iframe.style.display = 'block';
+        placeholder.style.display = 'none';
+    } else {
+        iframe.style.display = 'none';
+        placeholder.style.display = 'flex';
+    }
+}
+
+// Load on page init from localStorage
+const savedUrl = localStorage.getItem(STORAGE_KEY);
+loadGrafana(savedUrl || '');
+
+// Allow pressing Enter to save
+document.getElementById('grafana-url-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') saveGrafanaUrl();
+});
+</script>
 {% endblock %}
