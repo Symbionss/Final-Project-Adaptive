@@ -1,4 +1,3 @@
-{% load static %}
 <!doctype html>
 <html lang="en">
   <head>
@@ -11,7 +10,240 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <!-- Vis Network -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+      :root {
+        --bg-color: #0c1220; /* Darker background resembling the prompt */
+        --card-bg: rgba(20, 27, 45, 0.8);
+        --primary-color: #0ea5e9; /* Neon blue */
+        --danger-color: #ef4444; /* Neon red */
+        --success-color: #10b981; /* Neon green */
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --border-color: rgba(255, 255, 255, 0.05); /* Softer borders */
+      }
+
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-color);
+        background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+        background-size: 20px 20px;
+        color: var(--text-primary);
+        margin: 0;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      h1, h2 {
+        font-weight: 800;
+        margin-top: 0;
+        letter-spacing: -0.5px;
+      }
+
+      h1 {
+        text-align: center;
+        background: linear-gradient(90deg, #f8fafc, #94a3b8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 30px;
+        font-size: 2.5rem;
+      }
+
+      .container {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      @media (min-width: 1024px) {
+        .container {
+          grid-template-columns: 350px 1fr;
+        }
+      }
+
+      .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        padding: 24px;
+        border-radius: 16px;
+        backdrop-filter: blur(16px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* Ambient shadow */
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .card h2 {
+        font-size: 1.25rem;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .card h2::before {
+        content: '';
+        display: block;
+        width: 8px;
+        height: 24px;
+        background: var(--primary-color);
+        border-radius: 4px;
+        box-shadow: 0 0 10px var(--primary-color);
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      input[type="text"], select {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+
+      input[type="text"]:focus, select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 8px rgba(14, 165, 233, 0.5);
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+      }
+
+      button {
+        flex: 1;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-family: inherit;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        color: white;
+        transition: all 0.2s;
+      }
+
+      button.block-btn {
+        background: linear-gradient(135deg, #ef4444, #b91c1c);
+        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+      }
+
+      button.unblock-btn {
+        background: linear-gradient(135deg, #10b981, #047857);
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      #result {
+        margin-top: 15px;
+        padding: 15px;
+        background: rgba(0,0,0,0.4);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        border: 1px solid var(--border-color);
+        min-height: 80px;
+      }
+
+      .main-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        min-width: 0;
+      }
+
+      #topology-network {
+        width: 100%;
+        height: 450px;
+        background: transparent; 
+        background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+        background-size: 20px 20px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
+      }
+
+      .grafana-container {
+        width: 100%;
+        height: 600px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+      }
+
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+
+      .legend-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        margin-bottom: 15px;
+        font-size: 0.85rem;
+        background: rgba(0,0,0,0.4);
+        padding: 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+      }
+      .legend-line {
+        width: 24px;
+        height: 3px;
+        box-shadow: 0 0 5px currentColor; /* Dynamic glow */
+      }
+      .legend-dashed {
+        width: 24px;
+        height: 2px;
+        border-bottom: 2px dashed rgba(255,255,255,0.4);
+      }
+
+      .status-indicator {
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--text-secondary);
+        margin-top: 10px;
+      }
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: var(--primary-color);
+        box-shadow: 0 0 8px var(--primary-color);
+      }
+    </style>
   </head>
   <body>
     <h1>SDN Intelligence Center</h1>
@@ -73,6 +305,351 @@
       </main>
     </div>
 
-    <script src="{% static 'js/script.js' %}"></script>
+    <script>
+      // API call helper
+      async function triggerAPI(endpoint, ip) {
+        if (!ip) {
+          document.getElementById("result").innerText = "Please enter an IP address.";
+          return;
+        }
+
+        document.getElementById("result").innerText = "Processing...";
+        
+        try {
+          const res = await fetch(`/${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ip: ip }),
+          });
+          const data = await res.json();
+          document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+        } catch (e) {
+          document.getElementById("result").innerText = `Error: ${e.message}`;
+        }
+      }
+
+      function blockIP() { triggerAPI("block_ip", document.getElementById("ip").value); }
+      function unblockIP() { triggerAPI("unblock_ip", document.getElementById("ip").value); }
+
+      async function controlPort(action) {
+        let selector = document.getElementById("link-selector");
+        let val = selector.value;
+        if (!val) {
+          document.getElementById("result").innerText = "Silakan klik menu dan pilih sebuah Kabel (Link).";
+          return;
+        }
+        
+        let parts = val.split(":");
+        let dpid = parts[0];
+        let port_no = parts[1];
+
+        document.getElementById("result").innerText = `Processing Port ${action.toUpperCase()}...`;
+        try {
+          const res = await fetch(`/api/port_control`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dpid: dpid, port_no: port_no, action: action }),
+          });
+          const data = await res.json();
+          document.getElementById("result").innerText = JSON.stringify(data, null, 2);
+        } catch (e) {
+          document.getElementById("result").innerText = `Error: ${e.message}`;
+        }
+      }
+
+      // Vis-Network Topology Logic
+      let network = null;
+      let nodesDataset = new vis.DataSet();
+      let edgesDataset = new vis.DataSet();
+      let previousStats = {};
+      
+      async function drawTopology() {
+        try {
+          const res = await fetch('/api/topology');
+          const data = await res.json();
+          
+          if (data.status !== 'success') throw new Error(data.message || 'Failed to fetch topology');
+
+          document.getElementById('topo-status-text').innerText = `Live: ${data.switches.length} Switches, ${data.hosts.length} Hosts`;
+          document.getElementById('topo-status-dot').style.backgroundColor = 'var(--success-color)';
+
+          const activeNodes = new Set();
+          const activeEdges = new Set();
+
+          // Switches
+          if (data.switches) {
+            data.switches.forEach(sw => {
+              activeNodes.add(sw.dpid);
+              nodesDataset.update({
+                id: sw.dpid,
+                label: `🖧 Switch ${parseInt(sw.dpid, 16)}\nDPID: ${sw.dpid.slice(-8)}`,
+                group: 'switch',
+                shape: 'box',
+                color: { background: '#1e293b', border: '#475569', highlight: { background: '#334155', border: '#64748b' } },
+                font: { color: '#f8fafc', size: 14, multi: true, align: 'center', bold: { size: 14 } },
+                shapeProperties: { borderRadius: 8 },
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.6)', size: 15, x: 0, y: 5 },
+                margin: 12
+              });
+            });
+          }
+
+          // Hosts
+          if (data.hosts) {
+            data.hosts.forEach(host => {
+              activeNodes.add(host.mac);
+              const ip = (host.ipv4 && host.ipv4.length > 0) ? host.ipv4[0] : 'Unknown IP';
+              nodesDataset.update({
+                id: host.mac,
+                label: `💻 Host\nIP: ${ip}\nMAC: ${host.mac.slice(-8)}`,
+                group: 'host',
+                shape: 'box',
+                color: { background: '#0f172a', border: '#334155', highlight: { background: '#1e293b', border: '#475569' } },
+                font: { color: '#e2e8f0', size: 12, multi: true, align: 'center' },
+                shapeProperties: { borderRadius: 6 },
+                shadow: { enabled: true, color: 'rgba(0,0,0,0.5)', size: 10, x: 0, y: 5 },
+                margin: 10
+              });
+
+              if (host.port && host.port.dpid) {
+                const edgeId = `host-${host.mac}-${host.port.dpid}`;
+                activeEdges.add(edgeId);
+                const existingEdge = edgesDataset.get(edgeId);
+                if (!existingEdge || existingEdge._animating === undefined) {
+                    edgesDataset.update({
+                      id: edgeId,
+                      from: host.mac,
+                      to: host.port.dpid,
+                      color: { color: 'rgba(148, 163, 184, 0.4)' },
+                      width: 2,
+                      dashes: true,
+                      shadow: { enabled: false }, // Glow disable on defaults host connection
+                      arrows: {
+                         from: { enabled: true, type: 'circle', scaleFactor: 0.4 },
+                         to: { enabled: true, type: 'circle', scaleFactor: 0.4 }
+                      },
+                      isSwitchLink: false,
+                      srcDpid: host.port.dpid,
+                      srcPort: host.port.port_no,
+                      _animating: false
+                    });
+                }
+              }
+            });
+          }
+
+          // Links
+          let optionsMap = {};
+          if (data.links) {
+            data.links.forEach(link => {
+              const src = link.src.dpid;
+              const dst = link.dst.dpid;
+              const srcPort = link.src.port_no;
+              const dstPort = link.dst.port_no;
+              
+              const isSrcSmaller = src < dst;
+              const normalizedEdgeId = isSrcSmaller ? `${src}:${srcPort}-${dst}:${dstPort}` : `${dst}:${dstPort}-${src}:${srcPort}`;
+              activeEdges.add(normalizedEdgeId);
+              
+              const isBackup = (srcPort === "00000005" || dstPort === "00000005" || srcPort === "00000003" || dstPort === "00000003" || (src === "0000000000000002" && srcPort === "00000004") || (dst === "0000000000000002" && dstPort === "00000004"));
+              let linkColor = isBackup ? '#f59e0b' : '#10b981';
+              let linkLabel = isBackup ? 'Backup' : 'Main';
+              
+              // Menyusun data untuk Dropdown Selector Pintar
+              let s1_id = parseInt(src, 16);
+              let s2_id = parseInt(dst, 16);
+              let portInt = parseInt(srcPort, 16);
+              optionsMap[`${s1_id}:${portInt}`] = `[Switch ${s1_id}] Port ${portInt} 👉 ke S${s2_id} (${linkLabel})`;
+
+              const existing = edgesDataset.get(normalizedEdgeId);
+              if (!existing || existing.label === 'DEAD' || existing._animating === undefined) {
+                  edgesDataset.update({
+                    id: normalizedEdgeId,
+                    from: src,
+                    to: dst,
+                    color: { color: linkColor, highlight: '#34d399', hover: '#34d399' },
+                    label: linkLabel,
+                    font: {color: '#f8fafc', size: 12, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.7)'},
+                    width: 3,
+                    dashes: false,
+                    shadow: { enabled: true, color: linkColor, size: 12, x: 0, y: 0 },
+                    arrows: {
+                       from: { enabled: true, type: 'circle', scaleFactor: 0.5 },
+                       to: { enabled: true, type: 'circle', scaleFactor: 0.5 }
+                    },
+                    isSwitchLink: true,
+                    srcDpid: src, srcPort: srcPort,
+                    dstDpid: dst, dstPort: dstPort,
+                    baseColor: linkColor, baseLabel: linkLabel,
+                    _animating: false
+                  });
+              }
+            });
+          }
+          
+          let linkSelector = document.getElementById("link-selector");
+          if (linkSelector) {
+              let currentSelection = linkSelector.value;
+              let newOptionsHTML = '<option value="">-- Pilih Kabel Switch (Main/Backup) --</option>';
+              for (const [val, text] of Object.entries(optionsMap)) {
+                  newOptionsHTML += `<option value="${val}">🔌 ${text}</option>`;
+              }
+              if (linkSelector.innerHTML !== newOptionsHTML) {
+                   linkSelector.innerHTML = newOptionsHTML;
+                   if (optionsMap[currentSelection]) linkSelector.value = currentSelection;
+              }
+          }
+
+          // Deteksi Kabel Mati
+          edgesDataset.forEach(edge => {
+             if (edge.isSwitchLink && !activeEdges.has(edge.id) && edge.label !== 'DEAD') {
+                 edgesDataset.update({
+                     id: edge.id,
+                     color: { color: '#ef4444' }, // Dim Red line / red dots
+                     label: 'DEAD',
+                     dashes: [5, 5],
+                     width: 2,
+                     font: {color: '#fca5a5', size: 12, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.7)'},
+                     shadow: { enabled: true, color: '#ef4444', size: 8, x: 0, y: 0 }, // Red glow
+                     arrows: {
+                         from: { enabled: true, type: 'circle', scaleFactor: 0.5 },
+                         to: { enabled: true, type: 'circle', scaleFactor: 0.5 }
+                     },
+                     _animating: false
+                 });
+             }
+             if (!edge.isSwitchLink && !activeEdges.has(edge.id)) {
+                 edgesDataset.remove(edge.id);
+             }
+          });
+
+          nodesDataset.forEach(node => {
+             if (!activeNodes.has(node.id)) {
+                 nodesDataset.remove(node.id);
+             }
+          });
+
+          if (!network) {
+            const container = document.getElementById('topology-network');
+            const graphData = { nodes: nodesDataset, edges: edgesDataset };
+            const options = {
+              layout: {
+                randomSeed: 8 // Angka seed paten agar orientasi selalu sejajar sama tiap kali refresh (landscape)
+              },
+              physics: {
+                solver: 'forceAtlas2Based',
+                forceAtlas2Based: { gravitationalConstant: -100, centralGravity: 0.01, springLength: 150, springConstant: 0.1 }
+              },
+              edges: { smooth: { type: 'dynamic', roundness: 0.5 } },
+              interaction: { hover: true, tooltipDelay: 200 }
+            };
+            network = new vis.Network(container, graphData, options);
+          }
+
+        } catch (e) {
+          console.error(e);
+          document.getElementById('topo-status-text').innerText = `Error: ${e.message}`;
+          document.getElementById('topo-status-dot').style.backgroundColor = 'var(--danger-color)';
+        }
+      }
+
+      async function fetchTraffic() {
+         if (!network || edgesDataset.length === 0) return;
+         try {
+             const res = await fetch('/api/traffic_stats');
+             const data = await res.json();
+             if (data.status === 'success') {
+                 const currentStats = data.stats;
+                 
+                 edgesDataset.forEach(edge => {
+                    if (edge.isSwitchLink && edge.label !== 'DEAD' && edge.srcDpid && edge.dstDpid) {
+                       let tx1 = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].tx : 0;
+                       let tx2 = currentStats[edge.dstDpid] && currentStats[edge.dstDpid][edge.dstPort] ? currentStats[edge.dstDpid][edge.dstPort].tx : 0;
+                       let prevTx1 = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].tx : tx1;
+                       let prevTx2 = previousStats[edge.dstDpid] && previousStats[edge.dstDpid][edge.dstPort] ? previousStats[edge.dstDpid][edge.dstPort].tx : tx2;
+                       
+                       let delta1 = tx1 - prevTx1;
+                       let delta2 = tx2 - prevTx2;
+                       
+                       // Threshold trafik logik. Angka dinaikkan ke 400 untuk mengabaikan paket kecil seperti LLDP/Echo ryu
+                       if (delta1 > 400 || delta2 > 400) {  
+                           // Animasi Active Traffic Pulse!
+                           edgesDataset.update({
+                               id: edge.id, 
+                               color: { color: '#0ea5e9' }, // Neon Blue
+                               shadow: { enabled: true, color: '#0ea5e9', size: 18, x: 0, y: 0 },
+                               width: 5,
+                               font: {color: '#ffffff', size: 13, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.8)'},
+                               label: (edge.baseLabel || "") + ' (Active Ping)',
+                               _animating: true
+                           });
+                       } else {
+                           // Kembalikan ke normal jika traffic berhenti dan sebelumnya menyala
+                           if (edge._animating) {
+                               edgesDataset.update({
+                                   id: edge.id,
+                                   color: { color: edge.baseColor },
+                                   shadow: { enabled: true, color: edge.baseColor, size: 12, x: 0, y: 0 },
+                                   width: 3,
+                                   font: {color: '#f8fafc', size: 12, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.7)'},
+                                   label: edge.baseLabel,
+                                   _animating: false
+                               });
+                           }
+                       }
+                    }
+
+                    // --- TAMBAHAN BARU: Animasi Khusus untuk Kabel Host ---
+                    if (!edge.isSwitchLink && edge.srcDpid && edge.srcPort) {
+                       let tx = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].tx : 0;
+                       let rx = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].rx : 0;
+                       
+                       let prevTx = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].tx : tx;
+                       let prevRx = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].rx : rx;
+                       
+                       let deltaTx = tx - prevTx;
+                       let deltaRx = rx - prevRx;
+                       
+                       // Ping dari/ke host.
+                       if (deltaTx > 200 || deltaRx > 200) {  
+                           edgesDataset.update({
+                               id: edge.id, 
+                               color: { color: '#8b5cf6' }, // Neon Purple
+                               shadow: { enabled: true, color: '#8b5cf6', size: 15, x: 0, y: 0 },
+                               width: 4,
+                               dashes: false, // Solid
+                               font: {color: '#ffffff', size: 12, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.8)'},
+                               label: 'Sending Data',
+                               _animating: true
+                           });
+                       } else {
+                           if (edge._animating) {
+                               edgesDataset.update({
+                                   id: edge.id,
+                                   color: { color: 'rgba(148, 163, 184, 0.4)' },
+                                   shadow: { enabled: false },
+                                   width: 2,
+                                   dashes: true,
+                                   label: undefined, // Hapus label
+                                   _animating: false
+                               });
+                           }
+                       }
+                    }
+                 });
+                 previousStats = currentStats;
+             }
+         } catch(e) {}
+      }
+
+      // Initialize
+      drawTopology();
+      
+      // Refresh topology architecture every 10 seconds
+      setInterval(drawTopology, 10000);
+      
+      // Polling traffic stats independently every 2 seconds for pulse animation
+      setInterval(fetchTraffic, 2000);
+    </script>
   </body>
 </html>
