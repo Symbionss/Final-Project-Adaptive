@@ -90,7 +90,11 @@
             <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
                 <label style="font-size:0.82rem;color:var(--text-secondary);">Select physical link to manage:</label>
                 <select id="link-selector" class="form-control">
-                    <option value="">-- Waiting for Topology --</option>
+                    <option value="">-- Please Select Link --</option>
+                    <option value="1:4">🔌 [Sw 1] Port 4 → S2 (Main) 🟢</option>
+                    <option value="1:5">🔌 [Sw 1] Port 5 → S2 (Backup) 🟢</option>
+                    <option value="3:4">🔌 [Sw 3] Port 4 → S2 (Main) 🟢</option>
+                    <option value="3:5">🔌 [Sw 3] Port 5 → S2 (Backup) 🟢</option>
                 </select>
             </div>
             <div style="display:flex;gap:10px;">
@@ -177,10 +181,26 @@ let network         = null;
 let nodesDataset    = new vis.DataSet();
 let edgesDataset    = new vis.DataSet();
 let previousStats   = {};
-let edgeStateMap    = {}; // dropdownKey -> 'alive' | 'dead'
-let dropdownLabelMap = {}; // dropdownKey -> display label string
+let edgeStateMap    = { '1:4':'alive', '1:5':'alive', '3:4':'alive', '3:5':'alive' };
 let lastSelection   = '';
 let pendingCutVal   = null;
+
+const LINK_LABELS = {
+    '1:4': '[Sw 1] Port 4 → S2 (Main)',
+    '1:5': '[Sw 1] Port 5 → S2 (Backup)',
+    '3:4': '[Sw 3] Port 4 → S2 (Main)',
+    '3:5': '[Sw 3] Port 5 → S2 (Backup)',
+};
+
+function refreshDropdownBadges() {
+    const sel = document.getElementById('link-selector');
+    for (let opt of sel.options) {
+        if (!opt.value || !LINK_LABELS[opt.value]) continue;
+        const dead = edgeStateMap[opt.value] === 'dead';
+        opt.text = `🔌 ${LINK_LABELS[opt.value]}${dead ? ' 🔴' : ' 🟢'}`;
+    }
+    if (lastSelection) sel.value = lastSelection;
+}
 
 // ── Modal Helpers ─────────────────────────────────────────────────────────────
 function openModal(id)  { document.getElementById(id).classList.add('show'); }
@@ -205,7 +225,7 @@ function requestCutLink() {
         return;
     }
     pendingCutVal = val;
-    const lbl = dropdownLabelMap[val] || val;
+    const lbl = LINK_LABELS[val] || val;
     document.getElementById('modal-confirm-body').innerText =
         `Yakin ingin memutus:\n${lbl}\n\nRyu controller akan otomatis beralih ke backup link jika tersedia.`;
     openModal('modal-confirm');
@@ -232,11 +252,10 @@ async function executeControl(action, val) {
     const [dpid, port_no] = val.split(':');
     document.getElementById('result').innerText = `> Processing ${action.toUpperCase()}...`;
 
-    // Optimistic local state update
+    // Optimistic local state
     edgeStateMap[val] = (action === 'down') ? 'dead' : 'alive';
-    rebuildDropdown();
-    document.getElementById('link-selector').value = val;
     lastSelection = val;
+    refreshDropdownBadges();
 
     try {
         const res  = await fetch('/api/port_control', {
@@ -247,8 +266,7 @@ async function executeControl(action, val) {
         const data = await res.json();
         document.getElementById('result').innerText =
             `> [${action.toUpperCase()}] Done:\n` + JSON.stringify(data, null, 2);
-
-        // Force immediate topology refresh so visual updates without waiting 10s
+        // Force visual refresh 1.5s later
         setTimeout(drawTopology, 1500);
     } catch (e) {
         document.getElementById('result').innerHTML =
@@ -337,7 +355,7 @@ async function drawTopology() {
         });
 
         // Switch–Switch Links
-        const seenDKeys = new Set(); // track which dropdown keys we saw this round
+        const seenDKeys = new Set();
         (data.links || []).forEach(link => {
             const src = link.src.dpid, dst = link.dst.dpid;
             const srcPort = link.src.port_no, dstPort = link.dst.port_no;
@@ -353,35 +371,22 @@ async function drawTopology() {
                 (src==='0000000000000002'&&srcPort==='00000004')||
                 (dst==='0000000000000002'&&dstPort==='00000004');
 
-            const lc    = isBackup ? '#f59e0b' : '#10b981';
-            const lbl   = isBackup ? 'Backup'  : 'Main';
-            const s1    = parseInt(src, 16);
-            const s2    = parseInt(dst, 16);
-            const port  = parseInt(srcPort, 16);
-            const dKey  = `${s1}:${port}`;
+            const lc   = isBackup ? '#f59e0b' : '#10b981';
+            const lbl  = isBackup ? 'Backup'  : 'Main';
+            const s1   = parseInt(src, 16);
+            const port = parseInt(srcPort, 16);
+            const dKey = `${s1}:${port}`;
             seenDKeys.add(dKey);
 
-            dropdownLabelMap[dKey] = `[Sw ${s1}] Port ${port} → S${s2} (${lbl})`;
-
-            // If this link just came back alive (after restore), reset state
+            // If Ryu reports this link, it IS alive. Trust Ryu.
             if (edgeStateMap[dKey] === 'dead') {
                 edgeStateMap[dKey] = 'alive';
-                // Restore edge styling immediately
-                const existingEid = edgesDataset.get(eid);
-                if (existingEid) {
-                    edgesDataset.update({
-                        id: eid,
-                        color: { color: lc, highlight: '#6ee7b7', hover: '#6ee7b7' },
-                        label: lbl, dashes: false, width: 4,
-                        font: { color:'#f8fafc', size:11, align:'top', strokeWidth:3, strokeColor:'#0b0f19', background:'rgba(11,15,25,0.8)' },
-                        shadow: { enabled:true, color:lc, size:14, x:0, y:0 },
-                        baseColor: lc, baseLabel: lbl, _animating: false,
-                    });
-                }
+                refreshDropdownBadges();
             }
-            if (!edgeStateMap[dKey]) edgeStateMap[dKey] = 'alive';
 
-            if (!edgesDataset.get(eid) || edgesDataset.get(eid)._animating === undefined) {
+            const existing = edgesDataset.get(eid);
+            // Only update edge if it's new OR was DEAD (restore case) OR not animating
+            if (!existing || existing.label === 'DEAD' || !existing._animating) {
                 edgesDataset.update({
                     id: eid, from: src, to: dst,
                     color: { color: lc, highlight: '#6ee7b7', hover: '#6ee7b7' },
@@ -397,10 +402,11 @@ async function drawTopology() {
             }
         });
 
-        // FIX: Any dropdown key NOT seen this round = link is down → mark as dead so it stays in dropdown
-        for (const dKey of Object.keys(dropdownLabelMap)) {
+        // Any link in edgeStateMap NOT seen this round from Ryu = it's down
+        for (const dKey of Object.keys(edgeStateMap)) {
             if (!seenDKeys.has(dKey) && edgeStateMap[dKey] !== 'dead') {
                 edgeStateMap[dKey] = 'dead';
+                refreshDropdownBadges();
             }
         }
 
@@ -428,47 +434,21 @@ async function drawTopology() {
                 document.getElementById('topology-network'),
                 { nodes: nodesDataset, edges: edgesDataset },
                 {
-                    layout: { randomSeed: 12 },
+                    layout: { randomSeed: 8 },
                     physics: {
-                        enabled: true,
-                        solver: 'barnesHut',
-                        barnesHut: {
-                            gravitationalConstant: -8000,  // Strong repulsion keeps nodes far apart
-                            centralGravity: 0.1,
-                            springLength: 250,             // Long cables = nodes spread out
-                            springConstant: 0.04,          // Low = softer spring, less "karet"
-                            damping: 0.12,                 // High damping = settles quickly
-                            avoidOverlap: 1,               // Prevent overlapping nodes
-                        },
-                        stabilization: {
-                            enabled: true,
-                            iterations: 200,               // Settle into position on load
-                            updateInterval: 25,
-                            fit: true,
+                        solver: 'forceAtlas2Based',
+                        forceAtlas2Based: {
+                            gravitationalConstant: -100,
+                            centralGravity: 0.01,
+                            springLength: 180,
+                            springConstant: 0.08,
                         },
                     },
-                    edges: {
-                        smooth: {
-                            enabled: true,
-                            type: 'curvedCW',              // Slight curve only, not floppy
-                            roundness: 0.1,                // Low = nearly straight lines
-                        },
-                    },
-                    interaction: {
-                        hover: true,
-                        tooltipDelay: 200,
-                        dragNodes: true,                   // Let user reposition nodes manually
-                        zoomView: true,
-                    },
+                    edges: { smooth: { type: 'dynamic', roundness: 0.4 } },
+                    interaction: { hover: true, tooltipDelay: 200, dragNodes: true },
                 }
             );
-
-            // After stabilization, disable physics so nodes stay fixed (no more bouncing)
-            network.once('stabilizationIterationsDone', function() {
-                network.setOptions({ physics: { enabled: false } });
-            });
         }
-
     } catch (e) {
         console.error(e);
         document.getElementById('topo-status-text').innerText = `Error: ${e.message}`;
