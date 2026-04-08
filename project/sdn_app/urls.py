@@ -8,4 +8,5 @@ urlpatterns = [
     path('api/topology', views.api_topology, name='api_topology'),
     path('api/traffic_stats', views.api_traffic_stats, name='api_traffic_stats'),
     path('api/port_control', views.api_port_control, name='api_port_control'),
+    path('api/ping_test', views.api_ping_test, name='api_ping_test'),
 ]

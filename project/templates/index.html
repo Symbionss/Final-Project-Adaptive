@@ -5,70 +5,108 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SDN Control & Topology Dashboard</title>
-    <!-- Google Fonts & FontAwesome -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Vis Network -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <!-- Added cache busting v=3 to ensure refresh -->
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=4">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=5">
   </head>
   <body>
-    <!-- Overlay UI Header -->
+
+    <!-- Top Navigation -->
     <div class="top-nav">
        <div class="toggle-group">
-          <button class="toggle-btn" id="btn-grafana"><i class="fa-solid fa-chart-line"></i> Tampilkan Grafana</button>
-          <button class="toggle-btn" id="btn-perf"><i class="fa-solid fa-satellite-dish"></i> Status Sinyal</button>
+          <button class="toggle-btn active" id="btn-grafana" onclick="switchTab('grafana')">
+            <i class="fa-solid fa-chart-area"></i> Grafana
+          </button>
+          <button class="toggle-btn" id="btn-simulation" onclick="switchTab('simulation')">
+            <i class="fa-solid fa-gauge-high"></i> Simulation
+          </button>
        </div>
        <div class="title-glow">SDN Intelligence Center</div>
     </div>
 
-    <!-- Main Topology Canvas -->
+    <!-- Full-screen Topology Canvas -->
     <div id="topology-network" class="fullscreen-canvas"></div>
+
+    <!-- Floating Status -->
     <div class="status-indicator floating-status">
-       <div class="status-dot tooltip" id="topo-status-dot"></div>
+       <div class="status-dot" id="topo-status-dot"></div>
        <span id="topo-status-text">Fetching topology data...</span>
     </div>
 
-    <!-- Floating Panels -->
-
-    <!-- Metrics Panel (Grafana) -->
-    <div class="floating-panel metrics-panel panel-hidden" id="panel-grafana">
-        <h3><i class="fa-solid fa-chart-line"></i> Grafana Metrics</h3>
-        <div class="grafana-container">
-           <iframe src="http://103.183.74.87:3000/public-dashboards/8bc610f47c9b4b6a9c077196f287a392"></iframe>
-        </div>
+    <!-- Floating Slide-out Panel: Grafana -->
+    <div class="slide-panel" id="panel-grafana">
+       <div class="slide-panel-header">
+          <h3><i class="fa-solid fa-chart-line"></i> Grafana Metrics</h3>
+          <button class="panel-close-btn" onclick="closePanel('grafana')"><i class="fa-solid fa-xmark"></i></button>
+       </div>
+       <div class="grafana-container">
+          <iframe src="http://103.183.74.87:3000/public-dashboards/8bc610f47c9b4b6a9c077196f287a392"></iframe>
+       </div>
     </div>
 
-    <!-- Performance Panel (Simulated) -->
-    <div class="floating-panel metrics-panel panel-hidden" id="panel-perf">
-        <h3><i class="fa-solid fa-gauge-high"></i> Signal Performance</h3>
-        <div class="perf-stats">
-           <div class="perf-item">
-              <span class="perf-label">Latency</span>
-              <span class="perf-value" id="sim-latency">12 ms</span>
-           </div>
-           <div class="perf-item">
-              <span class="perf-label">Throughput</span>
-              <span class="perf-value" id="sim-throughput">1.2 Gbps</span>
-           </div>
-           <div class="perf-item">
-              <span class="perf-label">Jitter</span>
-              <span class="perf-value" id="sim-jitter">2 ms</span>
-           </div>
-        </div>
+    <!-- Floating Slide-out Panel: Simulation -->
+    <div class="slide-panel" id="panel-simulation">
+       <div class="slide-panel-header">
+          <h3><i class="fa-solid fa-gauge-high"></i> Network Simulation</h3>
+          <button class="panel-close-btn" onclick="closePanel('simulation')"><i class="fa-solid fa-xmark"></i></button>
+       </div>
+       <div class="sim-controls">
+          <div class="form-group">
+            <label class="sim-label">Source Host</label>
+            <select id="sim-source"></select>
+          </div>
+          <div class="form-group">
+            <label class="sim-label">Destination Host</label>
+            <select id="sim-dest"></select>
+          </div>
+          <div class="form-group">
+            <label class="sim-label">Packet Count</label>
+            <input type="number" id="sim-count" value="10" min="1" max="100" />
+          </div>
+          <button class="sim-run-btn" onclick="runSimulation()">
+            <i class="fa-solid fa-play"></i> Run Ping Test
+          </button>
+       </div>
+       <div class="sim-results" id="sim-results">
+          <div class="sim-placeholder"><i class="fa-solid fa-flask"></i><br/>Run a test to see results</div>
+       </div>
     </div>
+
+    <!-- Confirmation Modal -->
+    <div class="modal-overlay" id="confirm-modal">
+       <div class="modal-box">
+          <div class="modal-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <h3 id="modal-title">Confirm Link Cut</h3>
+          <p id="modal-body">Are you sure you want to cut the main link between Switch 1 and Switch 2?</p>
+          <div class="modal-actions">
+             <button class="modal-btn cancel" onclick="closeModal()">Cancel</button>
+             <button class="modal-btn confirm" id="modal-confirm-btn">Confirm</button>
+          </div>
+       </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div class="toast-container" id="toast-container"></div>
 
     <!-- Bottom Toolbar -->
     <div class="bottom-toolbar">
-       <button class="tool-btn"><i class="fa-solid fa-camera"></i></button>
-       <button class="tool-btn"><i class="fa-solid fa-folder"></i></button>
-       <button class="tool-btn"><i class="fa-solid fa-satellite-dish"></i></button>
-       <button class="tool-btn"><i class="fa-solid fa-gear"></i></button>
+       <button class="tool-btn" onclick="captureTopology()" title="Screenshot"><i class="fa-solid fa-camera"></i></button>
+       <button class="tool-btn" onclick="network && network.fit()" title="Fit View"><i class="fa-solid fa-expand"></i></button>
+       <button class="tool-btn" onclick="drawTopology()" title="Refresh Data"><i class="fa-solid fa-rotate"></i></button>
     </div>
 
-    <script src="{% static 'js/script.js' %}?v=4"></script>
+    <!-- Notification for Switch Selection Mode -->
+    <div class="switch-selection-bar" id="switch-selection-bar">
+       <div class="ssb-content">
+          <i class="fa-solid fa-hand-pointer"></i>
+          <span id="ssb-text">Click a switch on the topology to begin link control...</span>
+       </div>
+       <button class="ssb-cancel" onclick="cancelSwitchSelection()"><i class="fa-solid fa-xmark"></i> Cancel</button>
+    </div>
+
+    <script src="{% static 'js/script.js' %}?v=5"></script>
   </body>
 </html>
