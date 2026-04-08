@@ -1,655 +1,474 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SDN Control & Topology Dashboard</title>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <!-- Vis Network -->
-    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <style>
-      :root {
-        --bg-color: #0c1220; /* Darker background resembling the prompt */
-        --card-bg: rgba(20, 27, 45, 0.8);
-        --primary-color: #0ea5e9; /* Neon blue */
-        --danger-color: #ef4444; /* Neon red */
-        --success-color: #10b981; /* Neon green */
-        --text-primary: #f8fafc;
-        --text-secondary: #94a3b8;
-        --border-color: rgba(255, 255, 255, 0.05); /* Softer borders */
-      }
+{% extends "base.html" %}
 
-      body {
-        font-family: 'Inter', sans-serif;
-        background-color: var(--bg-color);
-        background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
-        background-size: 20px 20px;
-        color: var(--text-primary);
-        margin: 0;
-        padding: 20px;
-        box-sizing: border-box;
-      }
+{% block page_title %}Network Topology Simulation{% endblock %}
 
-      h1, h2 {
-        font-weight: 800;
-        margin-top: 0;
-        letter-spacing: -0.5px;
-      }
+{% block head_extra %}
+<script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<style>
+/* Remove focus outline around canvas */
+.vis-network:focus {
+    outline: none;
+}
+</style>
+{% endblock %}
 
-      h1 {
-        text-align: center;
-        background: linear-gradient(90deg, #f8fafc, #94a3b8);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 30px;
-        font-size: 2.5rem;
-      }
-
-      .container {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 20px;
-        max-width: 1400px;
-        margin: 0 auto;
-      }
-
-      @media (min-width: 1024px) {
-        .container {
-          grid-template-columns: 350px 1fr;
-        }
-      }
-
-      .card {
-        background: var(--card-bg);
-        border: 1px solid var(--border-color);
-        padding: 24px;
-        border-radius: 16px;
-        backdrop-filter: blur(16px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); /* Ambient shadow */
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-
-      .card h2 {
-        font-size: 1.25rem;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .card h2::before {
-        content: '';
-        display: block;
-        width: 8px;
-        height: 24px;
-        background: var(--primary-color);
-        border-radius: 4px;
-        box-shadow: 0 0 10px var(--primary-color);
-      }
-
-      .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        margin-bottom: 20px;
-      }
-
-      input[type="text"], select {
-        background: rgba(15, 23, 42, 0.8);
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-family: inherit;
-        font-size: 1rem;
-        outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-      }
-
-      input[type="text"]:focus, select:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 8px rgba(14, 165, 233, 0.5);
-      }
-
-      .button-group {
-        display: flex;
-        gap: 10px;
-      }
-
-      button {
-        flex: 1;
-        padding: 12px;
-        border: none;
-        border-radius: 8px;
-        font-family: inherit;
-        font-weight: 600;
-        font-size: 1rem;
-        cursor: pointer;
-        color: white;
-        transition: all 0.2s;
-      }
-
-      button.block-btn {
-        background: linear-gradient(135deg, #ef4444, #b91c1c);
-        box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
-      }
-
-      button.unblock-btn {
-        background: linear-gradient(135deg, #10b981, #047857);
-        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-      }
-
-      button:hover {
-        transform: translateY(-2px);
-        filter: brightness(1.1);
-      }
-
-      button:active {
-        transform: scale(0.98);
-      }
-
-      #result {
-        margin-top: 15px;
-        padding: 15px;
-        background: rgba(0,0,0,0.4);
-        border-radius: 8px;
-        font-size: 0.85rem;
-        color: var(--text-secondary);
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        border: 1px solid var(--border-color);
-        min-height: 80px;
-      }
-
-      .main-content {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        min-width: 0;
-      }
-
-      #topology-network {
-        width: 100%;
-        height: 450px;
-        background: transparent; 
-        background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-        background-size: 20px 20px;
-        border-radius: 12px;
-        border: 1px solid var(--border-color);
-        box-shadow: inset 0 0 40px rgba(0,0,0,0.8);
-      }
-
-      .grafana-container {
-        width: 100%;
-        height: 600px;
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid var(--border-color);
-      }
-
-      iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
-      }
-
-      .legend-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 15px;
-        margin-bottom: 15px;
-        font-size: 0.85rem;
-        background: rgba(0,0,0,0.4);
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-      }
-      .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .legend-color {
-        width: 16px;
-        height: 16px;
-        border-radius: 4px;
-      }
-      .legend-line {
-        width: 24px;
-        height: 3px;
-        box-shadow: 0 0 5px currentColor; /* Dynamic glow */
-      }
-      .legend-dashed {
-        width: 24px;
-        height: 2px;
-        border-bottom: 2px dashed rgba(255,255,255,0.4);
-      }
-
-      .status-indicator {
-        font-size: 0.8rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        color: var(--text-secondary);
-        margin-top: 10px;
-      }
-      .status-dot {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background-color: var(--primary-color);
-        box-shadow: 0 0 8px var(--primary-color);
-      }
-    </style>
-  </head>
-  <body>
-    <h1>SDN Intelligence Center</h1>
-
-    <div class="container">
-      <!-- Left Panel: Control -->
-      <aside>
-        <div class="card">
-          <h2>Security Control</h2>
-          <div class="form-group">
-            <input type="text" id="ip" placeholder="Enter IP Address (e.g. 10.0.0.1)" />
-          </div>
-          <div class="button-group">
-            <button class="block-btn" onclick="blockIP()">Block IP</button>
-            <button class="unblock-btn" onclick="unblockIP()">Unblock IP</button>
-          </div>
-          <div id="result">Response output will appear here...</div>
-          
-          <h3 style="margin-top:25px; margin-bottom:10px; font-size:1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom:8px; display:flex; align-items:center; gap:8px;">
-             Link Status Control
-          </h3>
-          <div class="form-group" style="margin-bottom: 15px;">
-            <select id="link-selector" style="width: 100%; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); color: var(--text-primary); padding: 12px 16px; border-radius: 8px; font-family: inherit; font-size: 0.95rem; outline: none;">
-               <option value="">-- Menunggu Data Topologi --</option>
-            </select>
-          </div>
-          <div class="button-group">
-            <button class="block-btn" onclick="controlPort('down')" style="background: #be123c;">Cut Link</button>
-            <button class="unblock-btn" onclick="controlPort('up')" style="background: #047857;">Restore Link</button>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Right Panel: Vis & Monitoring -->
-      <main class="main-content">
-        <div class="card">
-          <h2>Network Topology</h2>
-          <div class="legend-container">
-            <div class="legend-item"><div class="legend-color" style="background: #2563eb; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"></div><span>Switch</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #059669; border-radius: 50%;"></div><span>Host</span></div>
-            <div class="legend-item"><div class="legend-line" style="background: #10b981;"></div><span>Main Link (Cepat)</span></div>
-            <div class="legend-item"><div class="legend-line" style="background: #f59e0b;"></div><span>Backup Link (Lambat)</span></div>
-            <div class="legend-item"><div class="legend-line" style="background: #94a3b8;"></div><span>Unknown Link</span></div>
-            <div class="legend-item"><div class="legend-dashed"></div><span>Kabel Host</span></div>
-          </div>
-          <div id="topology-network"></div>
-          <div class="status-indicator">
-            <div class="status-dot tooltip" id="topo-status-dot"></div>
-            <span id="topo-status-text">Fetching topology data...</span>
-          </div>
+{% block content %}
+<div style="display:flex; gap:24px; flex:1; min-height:0;">
+    <!-- Topology Canvas -->
+    <div class="card" style="flex:1; padding:0; position:relative; overflow:hidden;">
+        <!-- Overlays matching aesthetics -->
+        <div style="position:absolute; top:24px; left:24px; z-index:5; display:flex; gap:12px;">
+            <div style="background:rgba(17,24,39,0.85); border:1px solid rgba(255,255,255,0.08); padding:8px 16px; border-radius:10px; font-size:0.9rem; font-weight:600; display:flex; align-items:center; gap:8px; backdrop-filter:blur(8px);">
+                <div style="width:8px; height:8px; background:var(--primary-blue); border-radius:50%; box-shadow:0 0 8px var(--primary-glow);"></div>
+                Real time
+            </div>
+            <div style="background:rgba(15,23,34,0.6); border:1px solid rgba(255,255,255,0.03); padding:8px 16px; border-radius:10px; font-size:0.9rem; font-weight:500; display:flex; align-items:center; gap:8px; color:var(--text-secondary); backdrop-filter:blur(8px);">
+                <i class="ph ph-clock"></i>
+                Simulation
+            </div>
         </div>
 
-        <div class="card" style="padding: 0; border: none; background: transparent; box-shadow: none;">
-          <h2 style="padding: 0 10px;">Metrics & Monitoring</h2>
-          <div class="grafana-container">
-            <iframe src="http://103.183.74.87:3000/public-dashboards/8bc610f47c9b4b6a9c077196f287a392"></iframe>
-          </div>
+        <div style="position:absolute; bottom:24px; left:24px; z-index:5;">
+            <div style="background:rgba(17,24,39,0.8); border:1px solid rgba(255,255,255,0.05); padding:8px 16px; border-radius:10px; font-size:0.8rem; display:flex; align-items:center; gap:8px; color:var(--text-secondary);">
+                <div class="status-dot" id="topo-status-dot" style="width:8px; height:8px; border-radius:50%; background:var(--warning-color);"></div>
+                <span id="topo-status-text">Fetching topology data...</span>
+            </div>
         </div>
-      </main>
+        
+        <div id="topology-network" style="width:100%; height:100%; min-height:500px;"></div>
     </div>
 
-    <script>
-      // API call helper
-      async function triggerAPI(endpoint, ip) {
-        if (!ip) {
-          document.getElementById("result").innerText = "Please enter an IP address.";
-          return;
-        }
-
-        document.getElementById("result").innerText = "Processing...";
+    <!-- Right Panels -->
+    <div style="width: 340px; display:flex; flex-direction:column; gap:24px; overflow-y:auto; padding-right:4px;">
         
-        try {
-          const res = await fetch(`/${endpoint}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ip: ip }),
-          });
-          const data = await res.json();
-          document.getElementById("result").innerText = JSON.stringify(data, null, 2);
-        } catch (e) {
-          document.getElementById("result").innerText = `Error: ${e.message}`;
-        }
+        <!-- Legend Component -->
+        <div class="card">
+            <h2 style="font-size:1.1rem; margin-top:0; margin-bottom:20px; display:flex; align-items:center; gap:10px; font-weight:600;">
+               <i class="ph-fill ph-info" style="color:var(--text-secondary); font-size:1.3rem;"></i> 
+               Color Legend
+            </h2>
+            <div style="display:flex; flex-direction:column; gap:16px; font-size: 0.9rem; color:var(--text-secondary);">
+               <div style="display:flex; align-items:center; gap:16px;">
+                   <div style="width:18px; height:18px; background:#1e293b; border:2px solid #3b82f6; border-radius:6px; box-shadow:0 4px 10px rgba(0,0,0,0.5);"></div>
+                   <span style="color:var(--text-primary); font-weight:500;">Switch Node</span>
+               </div>
+               <div style="display:flex; align-items:center; gap:16px;">
+                   <div style="width:18px; height:18px; background:#0f172a; border:2px solid #475569; border-radius:6px; box-shadow:0 4px 10px rgba(0,0,0,0.5);"></div>
+                   <span style="color:var(--text-primary); font-weight:500;">Host Device</span>
+               </div>
+               <div style="display:flex; align-items:center; gap:16px;">
+                   <div style="width:24px; height:3px; background:var(--success-color); box-shadow:0 0 6px var(--success-color);"></div>
+                   <span>Fast Link (Main)</span>
+               </div>
+               <div style="display:flex; align-items:center; gap:16px;">
+                   <div style="width:24px; height:3px; background:var(--warning-color); box-shadow:0 0 6px var(--warning-color);"></div>
+                   <span>Backup Link</span>
+               </div>
+               <div style="display:flex; align-items:center; gap:16px;">
+                   <div style="width:24px; height:2px; border-bottom:2px dashed #94a3b8;"></div>
+                   <span>Slow/Host Link</span>
+               </div>
+               <div style="display:flex; align-items:center; gap:16px;">
+                   <div style="width:24px; height:4px; background:var(--info-purple); box-shadow:0 0 10px var(--info-purple); border-radius:2px;"></div>
+                   <span style="color:var(--info-purple); font-weight:600;">Active Traffic Pulse</span>
+               </div>
+               <div style="display:flex; align-items:center; gap:16px;">
+                   <div style="width:24px; height:2px; border-bottom:2px dashed rgba(239, 68, 68, 0.4); box-shadow:0 0 10px var(--danger-color);"></div>
+                   <span style="color:var(--danger-color); font-weight:600;">Link Cut / Dead</span>
+               </div>
+            </div>
+        </div>
+
+        <!-- Link Control Panel -->
+        <div class="card">
+            <h2 style="font-size:1.1rem; margin-top:0; margin-bottom:20px; display:flex; align-items:center; gap:10px; font-weight:600;">
+               <i class="ph-fill ph-plugs-connected" style="color:var(--success-color); font-size:1.3rem;"></i> 
+               Link Priority Control
+            </h2>
+            <div class="form-group" style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+                <label style="font-size:0.85rem; color:var(--text-secondary);">Select physical link to manage:</label>
+                <select id="link-selector" class="form-control">
+                  <option value="">-- Waiting for Topology API --</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:12px;">
+                <button class="btn btn-danger" style="flex:1;" onclick="controlPort('down')" title="Simulate breaking this link">
+                  <i class="ph-bold ph-scissors"></i> Cut Link
+                </button>
+                <button class="btn btn-success" style="flex:1;" onclick="controlPort('up')" title="Restore the link">
+                  <i class="ph-bold ph-plugs"></i> Restore
+                </button>
+            </div>
+            <div id="result" style="margin-top:20px; font-size:0.85rem; color:var(--text-secondary); background:var(--bg-main); padding:16px; border-radius:8px; border:1px solid var(--border-color); min-height:80px; font-family:monospace; line-height:1.5;">
+              > System ready...
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function controlPort(action) {
+      let selector = document.getElementById("link-selector");
+      let val = selector.value;
+      if (!val) {
+        document.getElementById("result").innerHTML = "<span style='color:var(--warning-color)'>⚠ Please select a link first.</span>";
+        return;
       }
 
-      function blockIP() { triggerAPI("block_ip", document.getElementById("ip").value); }
-      function unblockIP() { triggerAPI("unblock_ip", document.getElementById("ip").value); }
+      let parts = val.split(":");
+      let dpid = parts[0];
+      let port_no = parts[1];
 
-      async function controlPort(action) {
-        let selector = document.getElementById("link-selector");
-        let val = selector.value;
-        if (!val) {
-          document.getElementById("result").innerText = "Silakan klik menu dan pilih sebuah Kabel (Link).";
-          return;
-        }
-        
-        let parts = val.split(":");
-        let dpid = parts[0];
-        let port_no = parts[1];
-
-        document.getElementById("result").innerText = `Processing Port ${action.toUpperCase()}...`;
-        try {
-          const res = await fetch(`/api/port_control`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ dpid: dpid, port_no: port_no, action: action }),
-          });
-          const data = await res.json();
-          document.getElementById("result").innerText = JSON.stringify(data, null, 2);
-        } catch (e) {
-          document.getElementById("result").innerText = `Error: ${e.message}`;
-        }
+      document.getElementById("result").innerText = `> Processing Port ${action.toUpperCase()}...`;
+      try {
+        const res = await fetch(`/api/port_control`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            dpid: dpid,
+            port_no: port_no,
+            action: action,
+          }),
+        });
+        const data = await res.json();
+        document.getElementById("result").innerText = `> [${action.toUpperCase()}] Response:\n` + JSON.stringify(data, null, 2);
+      } catch (e) {
+        document.getElementById("result").innerHTML = `<span style='color:var(--danger-color)'>✖ Error: ${e.message}</span>`;
       }
+    }
 
-      // Vis-Network Topology Logic
-      let network = null;
-      let nodesDataset = new vis.DataSet();
-      let edgesDataset = new vis.DataSet();
-      let previousStats = {};
-      
-      async function drawTopology() {
-        try {
-          const res = await fetch('/api/topology');
-          const data = await res.json();
-          
-          if (data.status !== 'success') throw new Error(data.message || 'Failed to fetch topology');
+    // Vis-Network Topology Logic
+    let network = null;
+    let nodesDataset = new vis.DataSet();
+    let edgesDataset = new vis.DataSet();
+    let previousStats = {};
 
-          document.getElementById('topo-status-text').innerText = `Live: ${data.switches.length} Switches, ${data.hosts.length} Hosts`;
-          document.getElementById('topo-status-dot').style.backgroundColor = 'var(--success-color)';
+    async function drawTopology() {
+      try {
+        const res = await fetch("/api/topology");
+        const data = await res.json();
 
-          const activeNodes = new Set();
-          const activeEdges = new Set();
+        if (data.status !== "success") throw new Error(data.message || "Failed to fetch topology");
 
-          // Switches
-          if (data.switches) {
-            data.switches.forEach(sw => {
-              activeNodes.add(sw.dpid);
-              nodesDataset.update({
-                id: sw.dpid,
-                label: `🖧 Switch ${parseInt(sw.dpid, 16)}\nDPID: ${sw.dpid.slice(-8)}`,
-                group: 'switch',
-                shape: 'box',
-                color: { background: '#1e293b', border: '#475569', highlight: { background: '#334155', border: '#64748b' } },
-                font: { color: '#f8fafc', size: 14, multi: true, align: 'center', bold: { size: 14 } },
-                shapeProperties: { borderRadius: 8 },
-                shadow: { enabled: true, color: 'rgba(0,0,0,0.6)', size: 15, x: 0, y: 5 },
-                margin: 12
+        document.getElementById("topo-status-text").innerText = `Live: ${data.switches.length} Switches, ${data.hosts.length} Hosts`;
+        document.getElementById("topo-status-dot").style.backgroundColor = "var(--success-color)";
+
+        const activeNodes = new Set();
+        const activeEdges = new Set();
+
+        // Switches Design matching the reference aesthetic
+        if (data.switches) {
+          data.switches.forEach((sw) => {
+            activeNodes.add(sw.dpid);
+            nodesDataset.update({
+              id: sw.dpid,
+              label: `\nSwitch ${parseInt(sw.dpid, 16)}\n${sw.dpid.slice(-8)}\n`,
+              group: "switch",
+              shape: "box",
+              color: {
+                background: "#1e293b",
+                border: "#3b82f6",
+                highlight: { background: "#334155", border: "#60a5fa" },
+              },
+              font: {
+                color: "#f8fafc",
+                size: 14,
+                multi: true,
+                align: "center",
+                bold: { size: 15 },
+              },
+              shapeProperties: { borderRadius: 12 }, // rounded corners like reference
+              shadow: {
+                enabled: true,
+                color: "rgba(0,0,0,0.6)",
+                size: 20,
+                x: 0,
+                y: 10,
+              },
+              margin: 16,
+            });
+          });
+        }
+
+        // Hosts Design
+        if (data.hosts) {
+          data.hosts.forEach((host) => {
+            activeNodes.add(host.mac);
+            const ip = host.ipv4 && host.ipv4.length > 0 ? host.ipv4[0] : "Unknown IP";
+            nodesDataset.update({
+              id: host.mac,
+              label: `💻  Host\nIP: ${ip}`,
+              group: "host",
+              shape: "box",
+              color: {
+                background: "#0f172a",
+                border: "#475569",
+                highlight: { background: "#1e293b", border: "#64748b" },
+              },
+              font: {
+                color: "#cbd5e1",
+                size: 12,
+                multi: true,
+                align: "center",
+              },
+              shapeProperties: { borderRadius: 8 },
+              shadow: {
+                enabled: true,
+                color: "rgba(0,0,0,0.5)",
+                size: 15,
+                x: 0,
+                y: 5,
+              },
+              margin: 12,
+            });
+
+            if (host.port && host.port.dpid) {
+              const edgeId = `host-${host.mac}-${host.port.dpid}`;
+              activeEdges.add(edgeId);
+              const existingEdge = edgesDataset.get(edgeId);
+              if (!existingEdge || existingEdge._animating === undefined) {
+                edgesDataset.update({
+                  id: edgeId,
+                  from: host.mac,
+                  to: host.port.dpid,
+                  color: { color: "rgba(148, 163, 184, 0.4)" },
+                  width: 2,
+                  dashes: true,
+                  shadow: { enabled: false }, // Glow disabled normally
+                  arrows: {
+                    from: { enabled: true, type: "circle", scaleFactor: 0.4 },
+                    to: { enabled: true, type: "circle", scaleFactor: 0.4 },
+                  },
+                  isSwitchLink: false,
+                  srcDpid: host.port.dpid,
+                  srcPort: host.port.port_no,
+                  _animating: false,
+                });
+              }
+            }
+          });
+        }
+
+        // Links
+        let optionsMap = {};
+        if (data.links) {
+          data.links.forEach((link) => {
+            const src = link.src.dpid;
+            const dst = link.dst.dpid;
+            const srcPort = link.src.port_no;
+            const dstPort = link.dst.port_no;
+
+            const isSrcSmaller = src < dst;
+            const normalizedEdgeId = isSrcSmaller
+              ? `${src}:${srcPort}-${dst}:${dstPort}`
+              : `${dst}:${dstPort}-${src}:${srcPort}`;
+            activeEdges.add(normalizedEdgeId);
+
+            const isBackup =
+              srcPort === "00000005" || dstPort === "00000005" ||
+              srcPort === "00000003" || dstPort === "00000003" ||
+              (src === "0000000000000002" && srcPort === "00000004") ||
+              (dst === "0000000000000002" && dstPort === "00000004");
+              
+            let linkColor = isBackup ? "var(--warning-color)" : "var(--success-color)";
+            let linkLabel = isBackup ? "Backup" : "Main Link";
+
+            let s1_id = parseInt(src, 16);
+            let s2_id = parseInt(dst, 16);
+            let portInt = parseInt(srcPort, 16);
+            optionsMap[`${s1_id}:${portInt}`] = `[Sw ${s1_id}] Port ${portInt} 👉 ke S${s2_id} (${linkLabel})`;
+
+            const existing = edgesDataset.get(normalizedEdgeId);
+            if (!existing || existing.label === "DEAD" || existing._animating === undefined) {
+              edgesDataset.update({
+                id: normalizedEdgeId,
+                from: src,
+                to: dst,
+                color: { color: linkColor, highlight: "#34d399", hover: "#34d399" },
+                label: linkLabel,
+                font: {
+                  color: "#f8fafc",
+                  size: 11,
+                  align: "top",
+                  strokeWidth: 0,
+                  background: "rgba(15, 23, 42, 0.8)",
+                },
+                width: 3,
+                dashes: false,
+                shadow: { enabled: true, color: linkColor, size: 10, x: 0, y: 0 },
+                arrows: {
+                  from: { enabled: true, type: "circle", scaleFactor: 0.5 },
+                  to: { enabled: true, type: "circle", scaleFactor: 0.5 },
+                },
+                isSwitchLink: true,
+                srcDpid: src,
+                srcPort: srcPort,
+                dstDpid: dst,
+                dstPort: dstPort,
+                baseColor: linkColor,
+                baseLabel: linkLabel,
+                _animating: false,
               });
+            }
+          });
+        }
+
+        let linkSelector = document.getElementById("link-selector");
+        if (linkSelector) {
+          let currentSelection = linkSelector.value;
+          let newOptionsHTML = '<option value="">-- Please Select Link --</option>';
+          for (const [val, text] of Object.entries(optionsMap)) {
+            newOptionsHTML += `<option value="${val}">🔌 ${text}</option>`;
+          }
+          if (linkSelector.innerHTML !== newOptionsHTML) {
+            linkSelector.innerHTML = newOptionsHTML;
+            if (optionsMap[currentSelection]) linkSelector.value = currentSelection;
+          }
+        }
+
+        // Dead Links Detector
+        edgesDataset.forEach((edge) => {
+          if (edge.isSwitchLink && !activeEdges.has(edge.id) && edge.label !== "DEAD") {
+            edgesDataset.update({
+              id: edge.id,
+              color: { color: "rgba(239, 68, 68, 0.4)" }, 
+              label: "DEAD",
+              dashes: [5, 5],
+              width: 2,
+              font: { color: "#fca5a5", size: 11, align: "top", background: "rgba(15, 23, 42, 0.7)" },
+              shadow: { enabled: true, color: "var(--danger-color)", size: 15, x: 0, y: 0 }, 
+              arrows: {
+                from: { enabled: true, type: "circle", scaleFactor: 0.5 },
+                to: { enabled: true, type: "circle", scaleFactor: 0.5 },
+              },
+              _animating: false,
             });
           }
+          if (!edge.isSwitchLink && !activeEdges.has(edge.id)) {
+            edgesDataset.remove(edge.id);
+          }
+        });
 
-          // Hosts
-          if (data.hosts) {
-            data.hosts.forEach(host => {
-              activeNodes.add(host.mac);
-              const ip = (host.ipv4 && host.ipv4.length > 0) ? host.ipv4[0] : 'Unknown IP';
-              nodesDataset.update({
-                id: host.mac,
-                label: `💻 Host\nIP: ${ip}\nMAC: ${host.mac.slice(-8)}`,
-                group: 'host',
-                shape: 'box',
-                color: { background: '#0f172a', border: '#334155', highlight: { background: '#1e293b', border: '#475569' } },
-                font: { color: '#e2e8f0', size: 12, multi: true, align: 'center' },
-                shapeProperties: { borderRadius: 6 },
-                shadow: { enabled: true, color: 'rgba(0,0,0,0.5)', size: 10, x: 0, y: 5 },
-                margin: 10
-              });
+        nodesDataset.forEach((node) => {
+          if (!activeNodes.has(node.id)) {
+            nodesDataset.remove(node.id);
+          }
+        });
 
-              if (host.port && host.port.dpid) {
-                const edgeId = `host-${host.mac}-${host.port.dpid}`;
-                activeEdges.add(edgeId);
-                const existingEdge = edgesDataset.get(edgeId);
-                if (!existingEdge || existingEdge._animating === undefined) {
-                    edgesDataset.update({
-                      id: edgeId,
-                      from: host.mac,
-                      to: host.port.dpid,
-                      color: { color: 'rgba(148, 163, 184, 0.4)' },
-                      width: 2,
-                      dashes: true,
-                      shadow: { enabled: false }, // Glow disable on defaults host connection
-                      arrows: {
-                         from: { enabled: true, type: 'circle', scaleFactor: 0.4 },
-                         to: { enabled: true, type: 'circle', scaleFactor: 0.4 }
-                      },
-                      isSwitchLink: false,
-                      srcDpid: host.port.dpid,
-                      srcPort: host.port.port_no,
-                      _animating: false
-                    });
+        if (!network) {
+          const container = document.getElementById("topology-network");
+          const graphData = { nodes: nodesDataset, edges: edgesDataset };
+          const options = {
+            layout: { randomSeed: 8 },
+            physics: {
+              solver: "forceAtlas2Based",
+              forceAtlas2Based: {
+                gravitationalConstant: -120,
+                centralGravity: 0.015,
+                springLength: 180,
+                springConstant: 0.08,
+              },
+            },
+            edges: { smooth: { type: "dynamic", roundness: 0.5 } },
+            interaction: { hover: true, tooltipDelay: 200 },
+          };
+          network = new vis.Network(container, graphData, options);
+        }
+      } catch (e) {
+        console.error(e);
+        document.getElementById("topo-status-text").innerText = `Error: ${e.message}`;
+        document.getElementById("topo-status-dot").style.backgroundColor = "var(--danger-color)";
+      }
+    }
+
+    async function fetchTraffic() {
+      if (!network || edgesDataset.length === 0) return;
+      try {
+        const res = await fetch("/api/traffic_stats");
+        const data = await res.json();
+        if (data.status === "success") {
+          const currentStats = data.stats;
+
+          edgesDataset.forEach((edge) => {
+            if (edge.isSwitchLink && edge.label !== "DEAD" && edge.srcDpid && edge.dstDpid) {
+              let tx1 = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].tx : 0;
+              let tx2 = currentStats[edge.dstDpid] && currentStats[edge.dstDpid][edge.dstPort] ? currentStats[edge.dstDpid][edge.dstPort].tx : 0;
+              let prevTx1 = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].tx : tx1;
+              let prevTx2 = previousStats[edge.dstDpid] && previousStats[edge.dstDpid][edge.dstPort] ? previousStats[edge.dstDpid][edge.dstPort].tx : tx2;
+
+              let delta1 = tx1 - prevTx1;
+              let delta2 = tx2 - prevTx2;
+
+              if (delta1 > 400 || delta2 > 400) {
+                edgesDataset.update({
+                  id: edge.id,
+                  color: { color: "#38bdf8" }, // Bright neon pulse
+                  shadow: { enabled: true, color: "#38bdf8", size: 25, x: 0, y: 0 },
+                  width: 5,
+                  font: { color: "#ffffff", size: 12, align: "top", background: "rgba(15, 23, 42, 0.9)" },
+                  label: (edge.baseLabel || "") + " (Active)",
+                  _animating: true,
+                });
+              } else {
+                if (edge._animating) {
+                  edgesDataset.update({
+                    id: edge.id,
+                    color: { color: edge.baseColor },
+                    shadow: { enabled: true, color: edge.baseColor, size: 10, x: 0, y: 0 },
+                    width: 3,
+                    font: { color: "#f8fafc", size: 11, align: "top", background: "rgba(15, 23, 42, 0.8)" },
+                    label: edge.baseLabel,
+                    _animating: false,
+                  });
                 }
               }
-            });
-          }
+            }
 
-          // Links
-          let optionsMap = {};
-          if (data.links) {
-            data.links.forEach(link => {
-              const src = link.src.dpid;
-              const dst = link.dst.dpid;
-              const srcPort = link.src.port_no;
-              const dstPort = link.dst.port_no;
-              
-              const isSrcSmaller = src < dst;
-              const normalizedEdgeId = isSrcSmaller ? `${src}:${srcPort}-${dst}:${dstPort}` : `${dst}:${dstPort}-${src}:${srcPort}`;
-              activeEdges.add(normalizedEdgeId);
-              
-              const isBackup = (srcPort === "00000005" || dstPort === "00000005" || srcPort === "00000003" || dstPort === "00000003" || (src === "0000000000000002" && srcPort === "00000004") || (dst === "0000000000000002" && dstPort === "00000004"));
-              let linkColor = isBackup ? '#f59e0b' : '#10b981';
-              let linkLabel = isBackup ? 'Backup' : 'Main';
-              
-              // Menyusun data untuk Dropdown Selector Pintar
-              let s1_id = parseInt(src, 16);
-              let s2_id = parseInt(dst, 16);
-              let portInt = parseInt(srcPort, 16);
-              optionsMap[`${s1_id}:${portInt}`] = `[Switch ${s1_id}] Port ${portInt} 👉 ke S${s2_id} (${linkLabel})`;
+            if (!edge.isSwitchLink && edge.srcDpid && edge.srcPort) {
+              let tx = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].tx : 0;
+              let rx = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].rx : 0;
+              let prevTx = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].tx : tx;
+              let prevRx = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].rx : rx;
 
-              const existing = edgesDataset.get(normalizedEdgeId);
-              if (!existing || existing.label === 'DEAD' || existing._animating === undefined) {
+              let deltaTx = tx - prevTx;
+              let deltaRx = rx - prevRx;
+
+              if (deltaTx > 200 || deltaRx > 200) {
+                edgesDataset.update({
+                  id: edge.id,
+                  color: { color: "var(--info-purple)" },
+                  shadow: { enabled: true, color: "var(--info-purple)", size: 20, x: 0, y: 0 },
+                  width: 4,
+                  dashes: false,
+                  font: { color: "#ffffff", size: 11, align: "top", background: "rgba(15, 23, 42, 0.8)" },
+                  label: "Data Flow",
+                  _animating: true,
+                });
+              } else {
+                if (edge._animating) {
                   edgesDataset.update({
-                    id: normalizedEdgeId,
-                    from: src,
-                    to: dst,
-                    color: { color: linkColor, highlight: '#34d399', hover: '#34d399' },
-                    label: linkLabel,
-                    font: {color: '#f8fafc', size: 12, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.7)'},
-                    width: 3,
-                    dashes: false,
-                    shadow: { enabled: true, color: linkColor, size: 12, x: 0, y: 0 },
-                    arrows: {
-                       from: { enabled: true, type: 'circle', scaleFactor: 0.5 },
-                       to: { enabled: true, type: 'circle', scaleFactor: 0.5 }
-                    },
-                    isSwitchLink: true,
-                    srcDpid: src, srcPort: srcPort,
-                    dstDpid: dst, dstPort: dstPort,
-                    baseColor: linkColor, baseLabel: linkLabel,
-                    _animating: false
+                    id: edge.id,
+                    color: { color: "rgba(148, 163, 184, 0.4)" },
+                    shadow: { enabled: false },
+                    width: 2,
+                    dashes: true,
+                    label: undefined,
+                    _animating: false,
                   });
+                }
               }
-            });
-          }
-          
-          let linkSelector = document.getElementById("link-selector");
-          if (linkSelector) {
-              let currentSelection = linkSelector.value;
-              let newOptionsHTML = '<option value="">-- Pilih Kabel Switch (Main/Backup) --</option>';
-              for (const [val, text] of Object.entries(optionsMap)) {
-                  newOptionsHTML += `<option value="${val}">🔌 ${text}</option>`;
-              }
-              if (linkSelector.innerHTML !== newOptionsHTML) {
-                   linkSelector.innerHTML = newOptionsHTML;
-                   if (optionsMap[currentSelection]) linkSelector.value = currentSelection;
-              }
-          }
-
-          // Deteksi Kabel Mati
-          edgesDataset.forEach(edge => {
-             if (edge.isSwitchLink && !activeEdges.has(edge.id) && edge.label !== 'DEAD') {
-                 edgesDataset.update({
-                     id: edge.id,
-                     color: { color: '#ef4444' }, // Dim Red line / red dots
-                     label: 'DEAD',
-                     dashes: [5, 5],
-                     width: 2,
-                     font: {color: '#fca5a5', size: 12, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.7)'},
-                     shadow: { enabled: true, color: '#ef4444', size: 8, x: 0, y: 0 }, // Red glow
-                     arrows: {
-                         from: { enabled: true, type: 'circle', scaleFactor: 0.5 },
-                         to: { enabled: true, type: 'circle', scaleFactor: 0.5 }
-                     },
-                     _animating: false
-                 });
-             }
-             if (!edge.isSwitchLink && !activeEdges.has(edge.id)) {
-                 edgesDataset.remove(edge.id);
-             }
+            }
           });
-
-          nodesDataset.forEach(node => {
-             if (!activeNodes.has(node.id)) {
-                 nodesDataset.remove(node.id);
-             }
-          });
-
-          if (!network) {
-            const container = document.getElementById('topology-network');
-            const graphData = { nodes: nodesDataset, edges: edgesDataset };
-            const options = {
-              layout: {
-                randomSeed: 8 // Angka seed paten agar orientasi selalu sejajar sama tiap kali refresh (landscape)
-              },
-              physics: {
-                solver: 'forceAtlas2Based',
-                forceAtlas2Based: { gravitationalConstant: -100, centralGravity: 0.01, springLength: 150, springConstant: 0.1 }
-              },
-              edges: { smooth: { type: 'dynamic', roundness: 0.5 } },
-              interaction: { hover: true, tooltipDelay: 200 }
-            };
-            network = new vis.Network(container, graphData, options);
-          }
-
-        } catch (e) {
-          console.error(e);
-          document.getElementById('topo-status-text').innerText = `Error: ${e.message}`;
-          document.getElementById('topo-status-dot').style.backgroundColor = 'var(--danger-color)';
+          previousStats = currentStats;
         }
-      }
+      } catch (e) {}
+    }
 
-      async function fetchTraffic() {
-         if (!network || edgesDataset.length === 0) return;
-         try {
-             const res = await fetch('/api/traffic_stats');
-             const data = await res.json();
-             if (data.status === 'success') {
-                 const currentStats = data.stats;
-                 
-                 edgesDataset.forEach(edge => {
-                    if (edge.isSwitchLink && edge.label !== 'DEAD' && edge.srcDpid && edge.dstDpid) {
-                       let tx1 = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].tx : 0;
-                       let tx2 = currentStats[edge.dstDpid] && currentStats[edge.dstDpid][edge.dstPort] ? currentStats[edge.dstDpid][edge.dstPort].tx : 0;
-                       let prevTx1 = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].tx : tx1;
-                       let prevTx2 = previousStats[edge.dstDpid] && previousStats[edge.dstDpid][edge.dstPort] ? previousStats[edge.dstDpid][edge.dstPort].tx : tx2;
-                       
-                       let delta1 = tx1 - prevTx1;
-                       let delta2 = tx2 - prevTx2;
-                       
-                       // Threshold trafik logik. Angka dinaikkan ke 400 untuk mengabaikan paket kecil seperti LLDP/Echo ryu
-                       if (delta1 > 400 || delta2 > 400) {  
-                           // Animasi Active Traffic Pulse!
-                           edgesDataset.update({
-                               id: edge.id, 
-                               color: { color: '#0ea5e9' }, // Neon Blue
-                               shadow: { enabled: true, color: '#0ea5e9', size: 18, x: 0, y: 0 },
-                               width: 5,
-                               font: {color: '#ffffff', size: 13, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.8)'},
-                               label: (edge.baseLabel || "") + ' (Active Ping)',
-                               _animating: true
-                           });
-                       } else {
-                           // Kembalikan ke normal jika traffic berhenti dan sebelumnya menyala
-                           if (edge._animating) {
-                               edgesDataset.update({
-                                   id: edge.id,
-                                   color: { color: edge.baseColor },
-                                   shadow: { enabled: true, color: edge.baseColor, size: 12, x: 0, y: 0 },
-                                   width: 3,
-                                   font: {color: '#f8fafc', size: 12, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.7)'},
-                                   label: edge.baseLabel,
-                                   _animating: false
-                               });
-                           }
-                       }
-                    }
-
-                    // --- TAMBAHAN BARU: Animasi Khusus untuk Kabel Host ---
-                    if (!edge.isSwitchLink && edge.srcDpid && edge.srcPort) {
-                       let tx = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].tx : 0;
-                       let rx = currentStats[edge.srcDpid] && currentStats[edge.srcDpid][edge.srcPort] ? currentStats[edge.srcDpid][edge.srcPort].rx : 0;
-                       
-                       let prevTx = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].tx : tx;
-                       let prevRx = previousStats[edge.srcDpid] && previousStats[edge.srcDpid][edge.srcPort] ? previousStats[edge.srcDpid][edge.srcPort].rx : rx;
-                       
-                       let deltaTx = tx - prevTx;
-                       let deltaRx = rx - prevRx;
-                       
-                       // Ping dari/ke host.
-                       if (deltaTx > 200 || deltaRx > 200) {  
-                           edgesDataset.update({
-                               id: edge.id, 
-                               color: { color: '#8b5cf6' }, // Neon Purple
-                               shadow: { enabled: true, color: '#8b5cf6', size: 15, x: 0, y: 0 },
-                               width: 4,
-                               dashes: false, // Solid
-                               font: {color: '#ffffff', size: 12, align: 'top', strokeWidth: 0, background: 'rgba(15, 23, 42, 0.8)'},
-                               label: 'Sending Data',
-                               _animating: true
-                           });
-                       } else {
-                           if (edge._animating) {
-                               edgesDataset.update({
-                                   id: edge.id,
-                                   color: { color: 'rgba(148, 163, 184, 0.4)' },
-                                   shadow: { enabled: false },
-                                   width: 2,
-                                   dashes: true,
-                                   label: undefined, // Hapus label
-                                   _animating: false
-                               });
-                           }
-                       }
-                    }
-                 });
-                 previousStats = currentStats;
-             }
-         } catch(e) {}
-      }
-
-      // Initialize
-      drawTopology();
-      
-      // Refresh topology architecture every 10 seconds
-      setInterval(drawTopology, 10000);
-      
-      // Polling traffic stats independently every 2 seconds for pulse animation
-      setInterval(fetchTraffic, 2000);
-    </script>
-  </body>
-</html>
+    // Initialize
+    drawTopology();
+    setInterval(drawTopology, 10000);
+    setInterval(fetchTraffic, 2000);
+</script>
+{% endblock %}

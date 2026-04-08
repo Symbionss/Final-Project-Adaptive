@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SDN Intelligence Center</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    {% block head_extra %}{% endblock %}
+    
+    <style>
+      :root {
+        --bg-main: #0B0F19; /* Deeper dark background inspired by screenshot */
+        --bg-panel: #111827;
+        --border-color: #1F2937;
+        --text-primary: #F9FAFB;
+        --text-secondary: #9CA3AF;
+        --primary-blue: #3B82F6;
+        --primary-glow: rgba(59, 130, 246, 0.4);
+        --success-color: #10B981;
+        --danger-color: #EF4444;
+        --warning-color: #F59E0B;
+        --info-purple: #8B5CF6;
+        
+        --sidebar-width: 260px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-main);
+        /* Subtle dotted grid like reference image */
+        background-image: radial-gradient(rgba(255, 255, 255, 0.03) 2px, transparent 2px);
+        background-size: 32px 32px;
+        color: var(--text-primary);
+        display: flex;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* Sidebar Styles */
+      .sidebar {
+        width: var(--sidebar-width);
+        background: rgba(13, 17, 28, 0.85); /* Slightly transparent */
+        backdrop-filter: blur(16px);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        flex-direction: column;
+        padding: 24px 0;
+        z-index: 10;
+        box-shadow: 4px 0 24px rgba(0,0,0,0.2);
+      }
+
+      .logo {
+        padding: 0 24px 24px 24px;
+        font-size: 1.25rem;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        color: white;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .logo i {
+        color: var(--primary-blue);
+        font-size: 1.5rem;
+        filter: drop-shadow(0 0 8px var(--primary-glow));
+      }
+
+      .nav-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 0 16px;
+      }
+
+      .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 18px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 0.95rem;
+        font-weight: 500;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+      }
+
+      .nav-link:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text-primary);
+      }
+
+      .nav-link.active {
+        background: rgba(59, 130, 246, 0.1);
+        color: var(--primary-blue);
+        border-right: 3px solid var(--primary-blue);
+      }
+
+      .nav-link i {
+        font-size: 1.25rem;
+      }
+
+      /* Main Content Area */
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        overflow-y: auto;
+      }
+
+      .topbar {
+        height: 72px;
+        padding: 0 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+      }
+
+      .topbar h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0;
+        letter-spacing: -0.5px;
+      }
+
+      .page-content {
+        padding: 32px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        position: relative;
+        overflow: hidden;  /* Prevent double scrollbar */
+        min-height: 0;     /* Critical for flex children to not overflow */
+      }
+
+      /* Card Component Refined */
+      .card {
+        background: rgba(17, 24, 39, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        border-radius: 16px;
+        backdrop-filter: blur(20px);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Buttons Standardized */
+      .btn {
+        border: none;
+        padding: 10px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        font-family: inherit;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .btn-primary {
+        background: var(--primary-blue);
+        color: white;
+        box-shadow: 0 4px 12px var(--primary-glow);
+      }
+      .btn-primary:hover {
+        background: #2563EB;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
+      }
+
+      .btn-danger {
+        background: #BE123C;
+        color: white;
+        box-shadow: 0 4px 12px rgba(190, 18, 60, 0.4);
+      }
+      .btn-danger:hover {
+        background: #9F1239;
+        transform: translateY(-1px);
+      }
+
+      .btn-success {
+        background: #047857;
+        color: white;
+        box-shadow: 0 4px 12px rgba(4, 120, 87, 0.4);
+      }
+      .btn-success:hover {
+        background: #065F46;
+        transform: translateY(-1px);
+      }
+
+      /* Form controls */
+      .form-control {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid var(--border-color);
+        color: var(--text-primary);
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.95rem;
+        outline: none;
+        transition: all 0.2s;
+      }
+      
+      .form-control:focus {
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 2px var(--primary-glow);
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+      
+      {% block extra_css %}{% endblock %}
+    </style>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="logo">
+        <i class="ph-fill ph-hexagon"></i>
+        SDN Center
+      </div>
+      <nav class="nav-menu">
+        <a href="{% url 'index' %}" class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}">
+          <i class="ph ph-graph"></i>
+          Topology Simulasi
+        </a>
+        <a href="{% url 'monitoring' %}" class="nav-link {% if request.resolver_match.url_name == 'monitoring' %}active{% endif %}">
+          <i class="ph ph-chart-line-up"></i>
+          Grafana Metrics
+        </a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+        <div class="status-badge" style="display:flex; align-items:center; gap:8px; font-size:0.875rem; background:#1e293b; padding:6px 14px; border-radius:20px; border:1px solid #334155; color: var(--text-primary);">
+          <div id="global-status-dot" class="dot" style="width:8px; height:8px; border-radius:50%; background:var(--text-secondary);"></div>
+          <span id="global-status-text">Menunggu Koneksi...</span>
+        </div>
+      </header>
+
+      <div class="page-content">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <script>
+        // Global API status checker (moved from index.html)
+        async function checkGlobalStatus() {
+            try {
+                const response = await fetch('/api/topology');
+                const dot = document.getElementById('global-status-dot');
+                const text = document.getElementById('global-status-text');
+                
+                if (response.ok) {
+                    dot.style.background = 'var(--success-color)';
+                    dot.style.boxShadow = '0 0 8px var(--success-color)';
+                    text.innerText = 'Controller Online';
+                } else {
+                    dot.style.background = 'var(--danger-color)';
+                    dot.style.boxShadow = '0 0 8px var(--danger-color)';
+                    text.innerText = 'Controller Error';
+                }
+            } catch (e) {
+                const dot = document.getElementById('global-status-dot');
+                const text = document.getElementById('global-status-text');
+                dot.style.background = 'var(--danger-color)';
+                dot.style.boxShadow = 'none';
+                text.innerText = 'Offline';
+            }
+        }
+        setInterval(checkGlobalStatus, 5000);
+        checkGlobalStatus();
+    </script>
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

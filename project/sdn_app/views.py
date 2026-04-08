@@ -10,55 +10,8 @@ RYU_API = settings.RYU_API
 def index(request):
     return render(request, 'index.html')
 
-@csrf_exempt
-def block_ip(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            ip = data.get('ip')
-            
-            if not ip:
-                return JsonResponse({'status': 'error', 'message': 'IP tidak diberikan'}, status=400)
-                
-            resp = requests.post(f'{RYU_API}/block_ip', json={'ip': ip}, timeout=5)
-            
-            return JsonResponse({
-                'status': 'success',
-                'action': 'block',
-                'ip': ip,
-                'ryu_response': resp.json()
-            })
-        except requests.exceptions.RequestException as e:
-            return JsonResponse({'status': 'error', 'message': f'Gagal ke Ryu: {str(e)}'}, status=500)
-        except json.JSONDecodeError:
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-            
-    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
-
-@csrf_exempt
-def unblock_ip(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            ip = data.get('ip')
-            
-            if not ip:
-                return JsonResponse({'status': 'error', 'message': 'IP tidak diberikan'}, status=400)
-                
-            resp = requests.post(f'{RYU_API}/unblock_ip', json={'ip': ip}, timeout=5)
-            
-            return JsonResponse({
-                'status': 'success',
-                'action': 'unblock',
-                'ip': ip,
-                'ryu_response': resp.json()
-            })
-        except requests.exceptions.RequestException as e:
-            return JsonResponse({'status': 'error', 'message': f'Gagal ke Ryu: {str(e)}'}, status=500)
-        except json.JSONDecodeError:
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
-
-    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+def monitoring(request):
+    return render(request, 'monitoring.html')
 
 def api_topology(request):
     """
