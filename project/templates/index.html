@@ -5,74 +5,73 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SDN Control & Topology Dashboard</title>
-    <!-- Google Fonts -->
+    <!-- Google Fonts & FontAwesome -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Vis Network -->
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <!-- Added cache busting v=3 to ensure refresh -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3">
   </head>
   <body>
-    <h1>SDN Intelligence Center</h1>
-
-    <div class="container">
-      <!-- Left Panel: Control -->
-      <aside>
-        <div class="card">
-          <h2>Security Control</h2>
-          <div class="form-group">
-            <input type="text" id="ip" placeholder="Enter IP Address (e.g. 10.0.0.1)" />
-          </div>
-          <div class="button-group">
-            <button class="block-btn" onclick="blockIP()">Block IP</button>
-            <button class="unblock-btn" onclick="unblockIP()">Unblock IP</button>
-          </div>
-          <div id="result">Response output will appear here...</div>
-          
-          <h3 style="margin-top:25px; margin-bottom:10px; font-size:1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom:8px; display:flex; align-items:center; gap:8px;">
-             Link Status Control
-          </h3>
-          <div class="form-group" style="margin-bottom: 15px;">
-            <select id="link-selector" style="width: 100%; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); color: var(--text-primary); padding: 12px 16px; border-radius: 8px; font-family: inherit; font-size: 0.95rem; outline: none;">
-               <option value="">-- Menunggu Data Topologi --</option>
-            </select>
-          </div>
-          <div class="button-group">
-            <button class="block-btn" onclick="controlPort('down')" style="background: #be123c;">Cut Link</button>
-            <button class="unblock-btn" onclick="controlPort('up')" style="background: #047857;">Restore Link</button>
-          </div>
-        </div>
-      </aside>
-
-      <!-- Right Panel: Vis & Monitoring -->
-      <main class="main-content">
-        <div class="card">
-          <h2>Network Topology</h2>
-          <div class="legend-container">
-            <div class="legend-item"><div class="legend-color" style="background: #2563eb; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);"></div><span>Switch</span></div>
-            <div class="legend-item"><div class="legend-color" style="background: #059669; border-radius: 50%;"></div><span>Host</span></div>
-            <div class="legend-item"><div class="legend-line" style="background: #10b981;"></div><span>Main Link (Cepat)</span></div>
-            <div class="legend-item"><div class="legend-line" style="background: #f59e0b;"></div><span>Backup Link (Lambat)</span></div>
-            <div class="legend-item"><div class="legend-line" style="background: #94a3b8;"></div><span>Unknown Link</span></div>
-            <div class="legend-item"><div class="legend-dashed"></div><span>Kabel Host</span></div>
-          </div>
-          <div id="topology-network"></div>
-          <div class="status-indicator">
-            <div class="status-dot tooltip" id="topo-status-dot"></div>
-            <span id="topo-status-text">Fetching topology data...</span>
-          </div>
-        </div>
-
-        <div class="card" style="padding: 0; border: none; background: transparent; box-shadow: none;">
-          <h2 style="padding: 0 10px;">Metrics & Monitoring</h2>
-          <div class="grafana-container">
-            <iframe src="http://103.183.74.87:3000/public-dashboards/8bc610f47c9b4b6a9c077196f287a392"></iframe>
-          </div>
-        </div>
-      </main>
+    <!-- Overlay UI Header -->
+    <div class="top-nav">
+       <div class="toggle-group">
+          <button class="toggle-btn" id="btn-realtime" onclick="toggleGrafana()"><i class="fa-solid fa-bolt"></i> Real time</button>
+          <button class="toggle-btn" id="btn-simulation" onclick="showSimulationModal()"><i class="fa-solid fa-clock-rotate-left"></i> Simulation</button>
+       </div>
+       <div class="title-glow">SDN Intelligence Center</div>
     </div>
 
-    <script src="{% static 'js/script.js' %}"></script>
+    <!-- Main Topology Canvas -->
+    <div id="topology-network" class="fullscreen-canvas"></div>
+    <div class="status-indicator floating-status">
+       <div class="status-dot tooltip" id="topo-status-dot"></div>
+       <span id="topo-status-text">Fetching topology data...</span>
+    </div>
+
+    <!-- Floating Panels -->
+    <!-- Metrics Panel -->
+    <div class="floating-panel metrics-panel" id="metrics-panel" style="display: none; opacity: 0; transition: 0.3s;">
+        <h3><i class="fa-solid fa-chart-line"></i> Grafana Metrics</h3>
+        <div class="grafana-container">
+           <iframe src="http://103.183.74.87:3000/public-dashboards/8bc610f47c9b4b6a9c077196f287a392"></iframe>
+        </div>
+    </div>
+
+    <!-- Bottom Toolbar -->
+    <div class="bottom-toolbar">
+       <button class="tool-btn"><i class="fa-solid fa-camera"></i></button>
+       <button class="tool-btn"><i class="fa-solid fa-folder"></i></button>
+       <button class="tool-btn"><i class="fa-solid fa-satellite-dish"></i></button>
+       <button class="tool-btn"><i class="fa-solid fa-gear"></i></button>
+    </div>
+
+    <!-- Simulation Modal -->
+    <div id="sim-modal" style="display:none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); z-index: 100; backdrop-filter: blur(5px); justify-content: center; align-items: center;">
+      <div style="background: var(--card-bg); border: 1px solid var(--border-color); padding: 30px; border-radius: 16px; width: 350px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8);">
+        <h2 style="margin-top: 0; color: var(--text-primary);"><i class="fa-solid fa-microchip" style="color: var(--primary-color);"></i> Simulation Metrics</h2>
+        <div style="display:flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+           <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Average Latency</div>
+              <div style="font-size: 1.5rem; font-weight: bold; color: var(--success-color);" id="sim-latency">12.4 ms</div>
+           </div>
+           <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Throughput</div>
+              <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary-color);" id="sim-throughput">105.2 Mbps</div>
+           </div>
+           <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Jitter</div>
+              <div style="font-size: 1.5rem; font-weight: bold; color: #f59e0b;" id="sim-jitter">1.2 ms</div>
+           </div>
+        </div>
+        <button onclick="document.getElementById('sim-modal').style.display='none'; clearInterval(window.simInterval);" style="margin-top: 20px; width: 100%; background: var(--primary-color); padding: 10px; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer;">Close Preview</button>
+      </div>
+    </div>
+
+    <!-- Script cache bust v=4 -->
+    <script src="{% static 'js/script.js' %}?v=4"></script>
   </body>
 </html>
