@@ -11,10 +11,7 @@ def index(request):
     return render(request, 'index.html')
 
 def monitoring(request):
-    grafana_url = settings.GRAFANA_URL
-    # Build the embed URL using the provisioned dashboard UID
-    embed_url = f"{grafana_url}/d/sdn-network-monitoring/sdn-network-monitoring?orgId=1&kiosk=tv&theme=dark"
-    return render(request, 'monitoring.html', {'grafana_embed_url': embed_url, 'grafana_base_url': grafana_url})
+    return render(request, 'monitoring.html')
 
 def api_topology(request):
     """
