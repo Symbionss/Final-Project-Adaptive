@@ -390,26 +390,29 @@ async function drawTopology() {
             const dKey  = `${s1}:${port}`;
             seenDKeys.add(dKey);
 
-            dropdownLabelMap[dKey] = `[Sw ${s1}] Port ${port} → S${s2} (${lbl})`;
-            dropdownEdgeIdMap[dKey] = eid; // Map for instant visual updates
+            // Filter dropdown to exactly 4 distinct links (from Sw 1 and Sw 3 to Sw 2)
+            if (s1 === 1 || s1 === 3) {
+                dropdownLabelMap[dKey] = `[Sw ${s1}] Port ${port} → S${s2} (${lbl})`;
+                dropdownEdgeIdMap[dKey] = eid; // Map for instant visual updates
 
-            // If this link just came back alive (after restore), reset state
-            if (edgeStateMap[dKey] === 'dead') {
-                edgeStateMap[dKey] = 'alive';
-                // Restore edge styling immediately
-                const existingEid = edgesDataset.get(eid);
-                if (existingEid) {
-                    edgesDataset.update({
-                        id: eid,
-                        color: { color: lc, highlight: '#6ee7b7', hover: '#6ee7b7' },
-                        label: lbl, dashes: false, width: 4,
-                        font: { color:'#f8fafc', size:11, align:'top', strokeWidth:3, strokeColor:'#0b0f19', background:'rgba(11,15,25,0.8)' },
-                        shadow: { enabled:true, color:lc, size:14, x:0, y:0 },
-                        baseColor: lc, baseLabel: lbl, _animating: false,
-                    });
+                // If this link just came back alive (after restore), reset state
+                if (edgeStateMap[dKey] === 'dead') {
+                    edgeStateMap[dKey] = 'alive';
+                    // Restore edge styling immediately
+                    const existingEid = edgesDataset.get(eid);
+                    if (existingEid) {
+                        edgesDataset.update({
+                            id: eid,
+                            color: { color: lc, highlight: '#6ee7b7', hover: '#6ee7b7' },
+                            label: lbl, dashes: false, width: 4,
+                            font: { color:'#f8fafc', size:11, align:'top', strokeWidth:3, strokeColor:'#0b0f19', background:'rgba(11,15,25,0.8)' },
+                            shadow: { enabled:true, color:lc, size:14, x:0, y:0 },
+                            baseColor: lc, baseLabel: lbl, _animating: false,
+                        });
+                    }
                 }
+                if (!edgeStateMap[dKey]) edgeStateMap[dKey] = 'alive';
             }
-            if (!edgeStateMap[dKey]) edgeStateMap[dKey] = 'alive';
 
             if (!edgesDataset.get(eid) || edgesDataset.get(eid)._animating === undefined) {
                 edgesDataset.update({
@@ -540,5 +543,25 @@ function drawTopologyGuarded() {
 drawTopology();
 setInterval(drawTopologyGuarded, 10000); // Periodic refresh — blocked if cut links exist
 setInterval(fetchTraffic,  2000);
+
+// ── Prevent Reload if Links are DEAD ──────────────────────────────────────────
+window.addEventListener('beforeunload', function(e) {
+    if (hasCutLinks()) {
+        e.preventDefault();
+        e.returnValue = 'Terdapat Link DEAD! Pastikan untuk me-restore link terlebih dahulu.';
+        return e.returnValue;
+    }
+});
+
+window.addEventListener('keydown', function(e) {
+    // Intercept F5 (116) or Ctrl+R
+    if ((e.keyCode === 116) || (e.ctrlKey && e.keyCode === 82)) {
+        if (hasCutLinks()) {
+            e.preventDefault();
+            showError('Tindakan Ditolak', 'Masih ada Link yang terputus (DEAD)!\n\nSistem mengunci fitur Reload halaman. Anda harus menekan tombol Restore pada link yang putus terlebih dahulu agar topologi kembali normal.');
+        }
+    }
+});
 </script>
 {% endblock %}
+
