@@ -24,10 +24,8 @@ folder topology/
 folder monitoring/
 folder testing/
 
-# Arsitektur topologi
-
 # Requirenment
-
+  Penelitian ini mengunakan 2 buah virtual machine (VM) dengan sistem operasi Ubuntu 22.04 yang dimana VM 1 dialihkan ke hosting server dari provider IDCloudHost. Sedangkan VM2 berperan sebagai data plane yang menjalankan Mininet dan Open vSwitch  dengan spesifikasi yang sama. Kedua VM terhubung dalam satu jaringan internal yang sama dengan alamat IP 103.183.74.87 untuk VM 1 (Cloud Server) dan 192.168.56.20 untuk VM 2. Proses instalasi Docker dan Ryu sebagai controller dijalankan di VM 1 yang merupakan "penampung" dari controller yang dijalankan sebagai container Docker. Sedangkan pada VM 2, instalasi Mininet dan Open vSwitch yang berfungsi untuk membuat topologi  jaringan dengan melakukan pendekatan 3 switch (S) yaitu S1 sebagai Edge – A , S2 sebagai core, dan S3 sebagai Edge – B. Selanjutnya topologi akan memuat 6 host (H) yang terbagi atas 2 subnet dengan IP 10.0.1.0/24 untuk H1, H2, H5 yang terhubung dengan S1 dan IP 10.0.2.0/24 untuk H3,  H4,  H6 yang terhubung dengan S3.  Link antar switch menggunakan bandwidth 100mbps, sedangkan link host ke switch menggunakan 10mbps. Selain itu, disediakan backup link langsung antara S1 dan S3 dengan bandwidth setengah dari main link, yaitu 50mbps.
 # Deployment
 
 # Hasil
