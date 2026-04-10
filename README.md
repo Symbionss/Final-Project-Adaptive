@@ -13,7 +13,7 @@ Sion
 Nopal
 
 # Topologi soal
-screenshots/topologi_soal.png
+screenshots/topo_soal.png
 
 //Supaya gampang, anggap GitHub-mu minimal harus punya:
 README.md
@@ -78,4 +78,4 @@ Dengan beberapa fitur sebagai berikut
 - Backup link untuk simulasi failover
 - Grafana Dashboard
 
-screenshots/web
+screenshots/web.png
