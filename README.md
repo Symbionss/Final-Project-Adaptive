@@ -13,16 +13,7 @@ Sion
 Nopal
 
 # Topologi soal
-screenshots/topo_soal.png
-
-//Supaya gampang, anggap GitHub-mu minimal harus punya:
-README.md
-folder docs/
-folder screenshots/
-folder controller/
-folder topology/
-folder monitoring/
-folder testing/
+![Topologi](screenshots/topo_soal.png)
 
 # Requirenment
 Requirenments yang di butuhkan untuk project ini berupa:
@@ -78,4 +69,4 @@ Dengan beberapa fitur sebagai berikut
 - Backup link untuk simulasi failover
 - Grafana Dashboard
 
-screenshots/web.png
+![Website](screenshots/web.png)
