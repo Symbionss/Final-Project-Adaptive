@@ -1,3 +1,102 @@
+## 1. Menyiapkan dan Masuk ke Direktori Proyek
+Pastikan Anda sudah berada di dalam VM atau server (VM1) yang akan menjalankan Controller dan sistem monitoring. Masuk ke direktori lokasi project berada:
+```bash
+cd sdn_monitoring
+```
+Direktori ini berisi konfigurasi untuk menjalankan SDN Controller (Ryu), Web Dashboard (Django), database metric (Prometheus), visualisasi (Grafana), dan Exporter.
+
+## 2. Memastikan Docker dan Docker Compose Terinstall
+Sistem ini menggunakan Docker untuk menjalankan seluruh layanannya secara terisolasi. Jika belum terinstall, Anda bisa menginstallnya dengan command berikut:
+```bash
+sudo apt update
+sudo apt install docker.io docker-compose -y
+```
+Setelah instalasi berhasil:
+- Ekosistem Docker siap digunakan.
+- Seluruh layanan jaringan siap dijalankan menggunakan docker-compose yang sudah dikonfigurasi tanpa harus install setup manual satu-persatu.
+
+## 3. Review Konfigurasi Port Layanan (Opsional)
+Pastikan port tidak ada yang bentrok di dalam host VM1. Di dalam `docker-compose.yaml`, layanan yang akan berjalan dan port yang digunakan adalah:
+- **Ryu Controller**: Port `6653` (OpenFlow tcp listen) & `8080` (REST API).
+- **Web Dashboard (Django)**: Port `5000` (Penamaan container: flask).
+- **Prometheus**: Port `9090`.
+- **Grafana**: Port `3000`.
+- **Ryu Exporter**: Port `9100`.
+- **Node Exporter**: Port `9101`.
+
+*Catatan: Pastikan IP public/private dari server/VM1 ini dicatat dan digunakan pada pembuatan topologi Mininet di VM2 (pada bagian `net.addController(ip='<IP_VM1>')`).*
+
+## 4. Menjalankan Seluruh Sistem Monitoring (Build and Run)
+Jalankan command ini di dalam direktori `sdn_monitoring` untuk mem-build app dan menyalakan semua services:
+```bash
+sudo docker-compose up -d --build
+```
+Proses ini akan mengunduh docker images origin, mem-build web app, dan menyalakan infrastruktur lengkap. Penanda `-d` (detached mode) digunakan agar container berjalan di background dan terminal bisa digunakan untuk hal lain.
+
+## 5. Mengecek Status Container
+Untuk memverifikasi environment berjalan dengan benar:
+```bash
+sudo docker-compose ps
+```
+Atau:
+```bash
+sudo docker ps
+```
+Command ini dilakukan untuk:
+- Memastikan semua container (ryu, flask, prometheus, grafana, node-exporter, exporter) berstatus **Up**.
+- Memastikan tidak ada container yang crash/restart berkali-kali.
+
+## 6. Mengakses Dashboard Antarmuka Web
+Jika semua komponen telah aktif, Anda dapat mengakses platform monitoring langsung melalui browser. *(Ganti `<IP_VM1>` dengan IP server/VM1 tempat docker ini berjalan)*:
+
+### A. Web Dashboard Management (Django)
+```text
+http://<IP_VM1>:5000
+```
+- Merupakan dashboard utama untuk melihat topologi secara visual.
+- Digunakan untuk kontrol jaringan (Cut/Restore link, Block/Unblock IP host).
+
+### B. Grafana Analytics
+```text
+http://<IP_VM1>:3000
+```
+- Username Default: `admin`
+- Password Default: `admin123`
+- Digunakan untuk memantau analitik metrics lebih mendalam melalui grafik series untuk node dan network.
+
+### C. Prometheus Data Source
+```text
+http://<IP_VM1>:9090
+```
+- Sistem di balik Grafana. Anda bisa melihat status target terhubung (exporter dan ryu metrics).
+
+## 7. Melakukan Debugging & Log Tracing
+### A. Mengecek Log Ryu Controller
+Jika Mininet pada VM2 susah terhubung ke Controller VM1 atau gagal konek OpenFlow:
+```bash
+sudo docker logs ryu -f
+```
+
+### B. Mengecek Log Web Aplikasi
+Jika terdapat error saat mengakses Web UI Dashboard, atau memantau hasil eksekusi request controller:
+```bash
+sudo docker logs flask -f
+```
+*(Gunakan `CTRL+C` untuk keluar dari live logs mode `-f`)*
+
+## 8. Menghentikan Instalasi dan Environment
+Jika Anda perlu memberhentikan service untuk debugging atau reset log monitoring:
+```bash
+sudo docker-compose down
+```
+Jika ingin menghapus seluruh system *termasuk membuang data database grafana* yang tersimpan di volume:
+```bash
+sudo docker-compose down -v
+```
+
+
+
+
 ## 1. **Clone repositori** atau salin *source code* proyek ini ke dalam server utama Anda.
    ```bash
    git clone https://github.com/Symbionss/Final-Project-Adaptive
