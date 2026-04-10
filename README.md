@@ -25,7 +25,57 @@ folder monitoring/
 folder testing/
 
 # Requirenment
-  Penelitian ini mengunakan 2 buah virtual machine (VM) dengan sistem operasi Ubuntu 22.04 yang dimana VM 1 dialihkan ke hosting server dari provider IDCloudHost. Sedangkan VM2 berperan sebagai data plane yang menjalankan Mininet dan Open vSwitch  dengan spesifikasi yang sama. Kedua VM terhubung dalam satu jaringan internal yang sama dengan alamat IP 103.183.74.87 untuk VM 1 (Cloud Server) dan 192.168.56.20 untuk VM 2. Proses instalasi Docker dan Ryu sebagai controller dijalankan di VM 1 yang merupakan "penampung" dari controller yang dijalankan sebagai container Docker. Sedangkan pada VM 2, instalasi Mininet dan Open vSwitch yang berfungsi untuk membuat topologi  jaringan dengan melakukan pendekatan 3 switch (S) yaitu S1 sebagai Edge – A , S2 sebagai core, dan S3 sebagai Edge – B. Selanjutnya topologi akan memuat 6 host (H) yang terbagi atas 2 subnet dengan IP 10.0.1.0/24 untuk H1, H2, H5 yang terhubung dengan S1 dan IP 10.0.2.0/24 untuk H3,  H4,  H6 yang terhubung dengan S3.  Link antar switch menggunakan bandwidth 100mbps, sedangkan link host ke switch menggunakan 10mbps. Selain itu, disediakan backup link langsung antara S1 dan S3 dengan bandwidth setengah dari main link, yaitu 50mbps.
-# Deployment
+Requirenments yang di butuhkan untuk project ini berupa:
+- Ryu Controller untuk mengontrol jaringan
+- Django sebagai sistem web basenya
+- Grafana + Prometheus untuk visualisasi data
+- Mininet untuk simulasi jaringan
 
-# Hasil
+# Arsitektur Sistem
+
+# Implementasi 
+## VM 1 – Control Plane (Cloud Server)
+Berfungsi sebagai pusat kontrol jaringan
+Menjalankan:
+- Ryu Controller (dalam Docker container)
+-Prometheus
+- Grafana
+- Django Web Server
+  
+## VM 2 – Data Plane
+Berfungsi sebagai simulasi jaringan
+Menjalankan:
+- Mininet
+- Open vSwitch (OVS)
+
+# Topologi Jaringan
+Menggunakan 3 switch dan 6 host dengan spesifikasi yang berbeda:
+**Switch**
+- S1 sebagai edge A
+- S2 Sebagai core switch
+- S3 sebagai edge B
+(koneksi main link antar switch 100Mbps dengan
+koneksi backup link antar switch 50Mbps) 
+**Host**
+- H1 H2 H3 terhubung pada edge A
+- H4 H5 H6 terhubung pada edge B
+(Koneksi link host dan switch 10Mpbs)
+
+# Mekanisme Kerja Sistem
+- Mininet membuat topologi jaringan di VM 2
+- Switch (OVS) terhubung ke Ryu Controller di VM 1 melalui protokol OpenFlow
+- Ryu Controller:
+    <br> - Mengatur flow jaringan
+    <br> - Mengumpulkan data traffic data dan dikirim ke Prometheus
+- Grafana menampilkan data dalam bentuk dashboard
+- Django menyediakan interface monitoring berbasis web
+
+# Fitur Utama
+Dengan beberapa fitur sebagai berikut
+- Mengelola jaringan dari web interface
+- Monitoring traffic real-time (latency, jitter, throughput)
+- Visualisasi topologi jaringan
+- Backup link untuk simulasi failover
+- Grafana Dashboard
+
+screenshots/web
