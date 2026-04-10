@@ -1,4 +1,4 @@
-1. Menginstall openvswitch dan mininet kedalam perangkat (vm2 ubuntu)
+## 1. Menginstall openvswitch dan mininet kedalam perangkat (vm2 ubuntu)
 ```
 sudo apt install openvswitch-switch mininet -y
 ```
@@ -6,11 +6,11 @@ Setelah instalasi berhasil:
 - Open vSwitch siap digunakan sebagai switch SDN
 - Mininet bisa digunakan untuk membuat topologi jaringan virtual.
 
-2. Membuat topology python.
+## 2. Membuat topology python.
 ```
 sudo nano topologi.py
 ```
-3. Isi file tersebut dengan command ini:
+## 3. Isi file tersebut dengan command ini:
 ```
 from mininet.topo import Topo
 from mininet.net import Mininet
@@ -86,17 +86,17 @@ if __name__ == '__main__':
 ```
 Ketika dijalankan, file ini akan otomatis membuat mininet switch dan host dengan link bandwidth dan ip yang berbeda masing", juga menghubungkan mininet ke ryu controller dimana pada bagian `net.addController(ip='')` masukan ip dari server/vm1 tempat beradanya ryu controllernya.
 
-4. Jalankan topologi yang sudah dibuat.
+## 4. Jalankan topologi yang sudah dibuat.
 ```
 sudo python3 topologi.py
 ```
-5. Melakukan ping pada host didalam mininet.
+## 5. Melakukan ping pada host didalam mininet.
 ```
 mininet> pingall
 mininet> h1 ping -c 3 h2
 mininet> h1 ping -c 3 h6
 ```
-6. Mengecek apakah server/vm1 sudah terkoneksi dengan vm2.
+## 6. Mengecek apakah server/vm1 sudah terkoneksi dengan vm2.
 ```
 sh ovs-vsctl
 ```
@@ -107,12 +107,46 @@ Command ini dilakukan untuk:
 
 > Untuk keluar dari mininet gunakan command `mininet> exit`
 
-7. Membuktikan 4 konsep logika controller dalam mininet.
+## 7. Membuktikan 4 konsep logika controller dalam mininet.
+### A. Konsep Layer 3 Switch (ICMP)
 ```
-
+h1 ping -c 3 h3 
+sudo ovs-ofctl -O OpenFlow13 dump-flows s1
 ```
+h1 melakukan ping kepada h3 dan menggunakan dumpflows untuk melihat rute jaringan
 
-8. Menghapus sisa environment mininet sebelumnya.
+### B. Konsep layer 2 Switch (TCP&UDP)
+```
+h3 iperf -s &
+h1 iperf -c h3
+sudo ovs-ofctl -O OpenFlow13 dump-flows s1
+h6 iperf -s -u &
+h5 iperf -c h6 -u
+sudo ovs-ofctl -O OpenFlow13 dump-flows s1
+```
+iperf digunakan untuk melihat bandwidth dan protocol pada jaringan 
+dan menggunakan dumpflows untuk melihat rute jaringan
+### C. Konsep Flow Timeout
+```
+h1 ping -c 3 h3
+sudo ovs-ofctl -O OpenFlow13 dump-flows s1
+sleep 30
+sudo ovs-ofctl -O OpenFlow13 dump-flows s1
+```
+Melakukan ping terlebih dahulu untuk melihat flow yang masih terbuka, kemudian menunggu selama 30 detik
+dan menjalankan kembali flow yang akhirnya flows akan otomatis hilang karna melewati timeflow. 
+### D. Konsep Backup Link
+```
+h1 ping h3
+sudo ovs-ofctl -O OpenFlow13 dump-flows s1 | grep output
+sudo ovs-ofctl -O OpenFlow13 mod-port s1 4 down
+sudo ovs-ofctl -O OpenFlow13 dump-flows s1 | grep output
+sudo ovs-ofctl -O OpenFlow13 mod-port s1 4 up
+```
+h1 ping h3 di jalankan di terminal yang berbeda untuk melihat apakah koneksi masih berjalan jika main protocol di putus.
+Kemudian main protocol (port 4) dimatikan menggunaka mod-port down dan otomatis menghidupkan backup protocol (port 5).
+
+## 8. Menghapus sisa environment mininet sebelumnya.
 ```
 sudo mn -c 
 ```
