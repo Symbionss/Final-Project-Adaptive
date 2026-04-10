@@ -22,8 +22,6 @@ Requirenments yang di butuhkan untuk project ini berupa:
 - Grafana + Prometheus untuk visualisasi data
 - Mininet untuk simulasi jaringan
 
-# Arsitektur Sistem
-
 # Implementasi 
 ## VM 1 – Control Plane (Cloud Server)
 Berfungsi sebagai pusat kontrol jaringan
